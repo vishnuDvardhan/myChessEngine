@@ -100,6 +100,73 @@ bool canCapture(int i, int j, Colours c)
   return isWhite(i, j);
 }
 
+vector<pair<int, int>> bishopToLocations(int i, int j, Colours c)
+{
+  vector<pair<int, int>> toLocations;
+  for (int k = 1;(k + i < 7 && k + j < 7);k++)
+  {
+    if (canLand(i + k, j + k, c))
+    {
+      toLocations.push_back({ k + i,k + j });
+    }
+    else
+    {
+      break;
+    }
+    if (canCapture(i + k, j + k, c))
+    {
+      break;
+    }
+  }
+  for (int k = 1;(i - k >= 0 && k + j < 7);k++)
+  {
+    if (canLand(i - k, j + k, c))
+    {
+      toLocations.push_back({ i - k,k + j });
+    }
+    else
+    {
+      break;
+    }
+    if (canCapture(i - k, j + k, c))
+    {
+      break;
+    }
+  }
+  for (int k = 1;(i - k >= 0 && j - k >= 0);k++)
+  {
+    if (canLand(i - k, j - k, c))
+    {
+      toLocations.push_back({ i - k,j - k });
+    }
+    else
+    {
+      break;
+    }
+    if (canCapture(i - k, j - k, c))
+    {
+      break;
+    }
+  }
+  for (int k = 1;(i + k < 7 && j - k >= 0);k++)
+  {
+    if (canLand(i + k, j - k, c))
+    {
+      toLocations.push_back({ i - k,j - k });
+    }
+    else
+    {
+      break;
+    }
+    if (canCapture(i + k, j - k, c))
+    {
+      break;
+    }
+  }
+  return toLocations;
+
+}
+
 vector<pair<int, int>> rookToLocations(int i, int j, Colours c)
 {
   vector<pair<int, int>> toLocations;
