@@ -1,12 +1,24 @@
 
-#include<vector>
+#include <vector>
 using namespace std;
 
-
-enum Pieces : int { empty, wPawn, wKnight, wBishop, wRook, wKing, wQueen, bPawn, bKnight, bBishop, bRook, bKing, bQueen };
+enum Pieces : int {
+  empty,
+  wPawn,
+  wKnight,
+  wBishop,
+  wRook,
+  wKing,
+  wQueen,
+  bPawn,
+  bKnight,
+  bBishop,
+  bRook,
+  bKing,
+  bQueen
+};
 
 enum Colours : int { black, white };
-
 
 std::string map_to_string(int i, int j) {
   char column = 'a' + j;
@@ -15,13 +27,11 @@ std::string map_to_string(int i, int j) {
 }
 
 Pieces board[8][8];
-char pieceTable[13] = { '.', 'P', 'N', 'B', 'R', 'K', 'Q',
-                       'p', 'n', 'b', 'r', 'k', 'q' };
+char pieceTable[13] = {'.', 'P', 'N', 'B', 'R', 'K', 'Q',
+                       'p', 'n', 'b', 'r', 'k', 'q'};
 
-void initBoard()
-{
-  for (int i = 1;i < 7;i++)
-  {
+void initBoard() {
+  for (int i = 1; i < 7; i++) {
     board[1][i] = Pieces::wPawn;
     board[6][i] = Pieces::bPawn;
   }
@@ -41,10 +51,6 @@ void initBoard()
   board[7][3] = Pieces::bQueen;
   board[0][4] = Pieces::wKing;
   board[7][4] = Pieces::bKing;
-
-
-
-
 }
 
 string numberToSquare(int i, int j) {
@@ -61,357 +67,245 @@ void printBoard() {
   cout << "\n";
 }
 
-
 bool isWhite(int i, int j) {
   return board[i][j] == Pieces::wPawn || board[i][j] == Pieces::wKnight ||
-    board[i][j] == Pieces::wBishop || board[i][j] == Pieces::wRook ||
-    board[i][j] == Pieces::wQueen || board[i][j] == Pieces::wKing;
+         board[i][j] == Pieces::wBishop || board[i][j] == Pieces::wRook ||
+         board[i][j] == Pieces::wQueen || board[i][j] == Pieces::wKing;
 }
 
 bool isBlack(int i, int j) {
   return board[i][j] == Pieces::bPawn || board[i][j] == Pieces::bKnight ||
-    board[i][j] == Pieces::bBishop || board[i][j] == Pieces::bRook ||
-    board[i][j] == Pieces::bQueen || board[i][j] == Pieces::bKing;
+         board[i][j] == Pieces::bBishop || board[i][j] == Pieces::bRook ||
+         board[i][j] == Pieces::bQueen || board[i][j] == Pieces::bKing;
 }
 
-bool canLand(int i, int j, Colours c)
-{
+bool canLand(int i, int j, Colours c) {
   if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
-    if (board[i][j] == Pieces::empty)
-    {
+    if (board[i][j] == Pieces::empty) {
       return true;
     }
-    if (c == Colours::white)
-    {
-      return  isBlack(i, j);
+    if (c == Colours::white) {
+      return isBlack(i, j);
     }
     return isWhite(i, j);
   }
   return false;
 }
 
-bool canCapture(int i, int j, Colours c)
-{
+bool canCapture(int i, int j, Colours c) {
 
-  if (c == Colours::white)
-  {
-    return  isBlack(i, j);
+  if (c == Colours::white) {
+    return isBlack(i, j);
   }
   return isWhite(i, j);
 }
 
-
-vector<pair<int, int>> knightToLocations(int i, int j, Colours c)
-{
+vector<pair<int, int>> knightToLocations(int i, int j, Colours c) {
   vector<pair<int, int>> toLocations;
-  if (canLand(i + 2, j + 1, c))
-  {
-    toLocations.push_back({ i + 2,j + 1 });
+  if (canLand(i + 2, j + 1, c)) {
+    toLocations.push_back({i + 2, j + 1});
   }
-  if (canLand(i + 2, j - 1, c))
-  {
-    toLocations.push_back({ i + 2,j - 1 });
+  if (canLand(i + 2, j - 1, c)) {
+    toLocations.push_back({i + 2, j - 1});
   }
-  if (canLand(i + 1, j + 2, c))
-  {
-    toLocations.push_back({ i + 1,j + 2 });
+  if (canLand(i + 1, j + 2, c)) {
+    toLocations.push_back({i + 1, j + 2});
   }
-  if (canLand(i + 1, j - 2, c))
-  {
-    toLocations.push_back({ i + 1,j - 2 });
+  if (canLand(i + 1, j - 2, c)) {
+    toLocations.push_back({i + 1, j - 2});
   }
-  if (canLand(i - 2, j + 1, c))
-  {
-    toLocations.push_back({ i - 2,j + 1 });
+  if (canLand(i - 2, j + 1, c)) {
+    toLocations.push_back({i - 2, j + 1});
   }
-  if (canLand(i - 2, j - 1, c))
-  {
-    toLocations.push_back({ i - 2,j - 1 });
+  if (canLand(i - 2, j - 1, c)) {
+    toLocations.push_back({i - 2, j - 1});
   }
-  if (canLand(i - 1, j + 2, c))
-  {
-    toLocations.push_back({ i - 1,j + 2 });
+  if (canLand(i - 1, j + 2, c)) {
+    toLocations.push_back({i - 1, j + 2});
   }
-  if (canLand(i - 1, j - 2, c))
-  {
-    toLocations.push_back({ i - 1,j - 2 });
+  if (canLand(i - 1, j - 2, c)) {
+    toLocations.push_back({i - 1, j - 2});
   }
 
   return toLocations;
-
 }
 
-vector<pair<int, int>> bishopToLocations(int i, int j, Colours c)
-{
+vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
   vector<pair<int, int>> toLocations;
-  for (int k = 1;(k + i < 7 && k + j < 7);k++)
-  {
-    if (canLand(i + k, j + k, c))
-    {
-      toLocations.push_back({ k + i,k + j });
-    }
-    else
-    {
+  for (int k = 1; (k + i < 7 && k + j < 7); k++) {
+    if (canLand(i + k, j + k, c)) {
+      toLocations.push_back({k + i, k + j});
+    } else {
       break;
     }
-    if (canCapture(i + k, j + k, c))
-    {
+    if (canCapture(i + k, j + k, c)) {
       break;
     }
   }
-  for (int k = 1;(i - k >= 0 && k + j < 7);k++)
-  {
-    if (canLand(i - k, j + k, c))
-    {
-      toLocations.push_back({ i - k,k + j });
-    }
-    else
-    {
+  for (int k = 1; (i - k >= 0 && k + j < 7); k++) {
+    if (canLand(i - k, j + k, c)) {
+      toLocations.push_back({i - k, k + j});
+    } else {
       break;
     }
-    if (canCapture(i - k, j + k, c))
-    {
+    if (canCapture(i - k, j + k, c)) {
       break;
     }
   }
-  for (int k = 1;(i - k >= 0 && j - k >= 0);k++)
-  {
-    if (canLand(i - k, j - k, c))
-    {
-      toLocations.push_back({ i - k,j - k });
-    }
-    else
-    {
+  for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
+    if (canLand(i - k, j - k, c)) {
+      toLocations.push_back({i - k, j - k});
+    } else {
       break;
     }
-    if (canCapture(i - k, j - k, c))
-    {
+    if (canCapture(i - k, j - k, c)) {
       break;
     }
   }
-  for (int k = 1;(i + k < 7 && j - k >= 0);k++)
-  {
-    if (canLand(i + k, j - k, c))
-    {
-      toLocations.push_back({ i - k,j - k });
-    }
-    else
-    {
+  for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
+    if (canLand(i + k, j - k, c)) {
+      toLocations.push_back({i - k, j - k});
+    } else {
       break;
     }
-    if (canCapture(i + k, j - k, c))
-    {
+    if (canCapture(i + k, j - k, c)) {
       break;
     }
   }
   return toLocations;
-
 }
 
-vector<pair<int, int>> rookToLocations(int i, int j, Colours c)
-{
+vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
   vector<pair<int, int>> toLocations;
 
+  for (int k = i + 1; k < 8; k++) {
 
-  for (int k = i + 1;k < 8;k++)
-  {
-
-    if (canLand(k, j, c))
-    {
-      toLocations.push_back({ k,j });
-    }
-    else
-    {
+    if (canLand(k, j, c)) {
+      toLocations.push_back({k, j});
+    } else {
       break;
     }
-    if (canCapture(k, j, c))
-    {
+    if (canCapture(k, j, c)) {
       break;
     }
-
   }
-  for (int k = i - 1;k >= 0;k--)
-  {
-    if (canLand(k, j, c))
-    {
-      toLocations.push_back({ k,j });
-    }
-    else
-    {
+  for (int k = i - 1; k >= 0; k--) {
+    if (canLand(k, j, c)) {
+      toLocations.push_back({k, j});
+    } else {
       break;
     }
-    if (canCapture(k, j, c))
-    {
+    if (canCapture(k, j, c)) {
       break;
     }
-
   }
-  for (int k = j - 1;k >= 0;k--)
-  {
+  for (int k = j - 1; k >= 0; k--) {
 
-    if (canLand(i, k, c))
-    {
-      toLocations.push_back({ i,k });
-    }
-    else
-    {
+    if (canLand(i, k, c)) {
+      toLocations.push_back({i, k});
+    } else {
       break;
     }
-    if (canCapture(i, k, c))
-    {
+    if (canCapture(i, k, c)) {
       break;
     }
-
   }
-  for (int k = j + 1;k < 8;k++)
-  {
-    if (canLand(i, k, c))
-    {
-      toLocations.push_back({ i,k });
-    }
-    else
-    {
+  for (int k = j + 1; k < 8; k++) {
+    if (canLand(i, k, c)) {
+      toLocations.push_back({i, k});
+    } else {
       break;
     }
-    if (canCapture(i, k, c))
-    {
+    if (canCapture(i, k, c)) {
       break;
     }
-
   }
   return toLocations;
 }
-vector<pair<int, int>> queenToLocations(int i, int j, Colours c)
-{
+vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   vector<pair<int, int>> toLocations;
-  for (int k = i + 1;k < 8;k++)
-  {
+  for (int k = i + 1; k < 8; k++) {
 
-    if (canLand(k, j, c))
-    {
-      toLocations.push_back({ k,j });
-    }
-    else
-    {
+    if (canLand(k, j, c)) {
+      toLocations.push_back({k, j});
+    } else {
       break;
     }
-    if (canCapture(k, j, c))
-    {
+    if (canCapture(k, j, c)) {
       break;
     }
+  }
+  for (int k = i - 1; k >= 0; k--) {
+    if (canLand(k, j, c)) {
+      toLocations.push_back({k, j});
+    } else {
+      break;
+    }
+    if (canCapture(k, j, c)) {
+      break;
+    }
+  }
+  for (int k = j - 1; k >= 0; k--) {
 
-  }
-  for (int k = i - 1;k >= 0;k--)
-  {
-    if (canLand(k, j, c))
-    {
-      toLocations.push_back({ k,j });
-    }
-    else
-    {
+    if (canLand(i, k, c)) {
+      toLocations.push_back({i, k});
+    } else {
       break;
     }
-    if (canCapture(k, j, c))
-    {
-      break;
-    }
-
-  }
-  for (int k = j - 1;k >= 0;k--)
-  {
-
-    if (canLand(i, k, c))
-    {
-      toLocations.push_back({ i,k });
-    }
-    else
-    {
-      break;
-    }
-    if (canCapture(i, k, c))
-    {
-      break;
-    }
-
-  }
-  for (int k = j + 1;k < 8;k++)
-  {
-    if (canLand(i, k, c))
-    {
-      toLocations.push_back({ i,k });
-    }
-    else
-    {
-      break;
-    }
-    if (canCapture(i, k, c))
-    {
-      break;
-    }
-
-  }
-  for (int k = 1;(k + i < 7 && k + j < 7);k++)
-  {
-    if (canLand(i + k, j + k, c))
-    {
-      toLocations.push_back({ k + i,k + j });
-    }
-    else
-    {
-      break;
-    }
-    if (canCapture(i + k, j + k, c))
-    {
+    if (canCapture(i, k, c)) {
       break;
     }
   }
-  for (int k = 1;(i - k >= 0 && k + j < 7);k++)
-  {
-    if (canLand(i - k, j + k, c))
-    {
-      toLocations.push_back({ i - k,k + j });
-    }
-    else
-    {
+  for (int k = j + 1; k < 8; k++) {
+    if (canLand(i, k, c)) {
+      toLocations.push_back({i, k});
+    } else {
       break;
     }
-    if (canCapture(i - k, j + k, c))
-    {
+    if (canCapture(i, k, c)) {
       break;
     }
   }
-  for (int k = 1;(i - k >= 0 && j - k >= 0);k++)
-  {
-    if (canLand(i - k, j - k, c))
-    {
-      toLocations.push_back({ i - k,j - k });
-    }
-    else
-    {
+  for (int k = 1; (k + i < 7 && k + j < 7); k++) {
+    if (canLand(i + k, j + k, c)) {
+      toLocations.push_back({k + i, k + j});
+    } else {
       break;
     }
-    if (canCapture(i - k, j - k, c))
-    {
+    if (canCapture(i + k, j + k, c)) {
       break;
     }
   }
-  for (int k = 1;(i + k < 7 && j - k >= 0);k++)
-  {
-    if (canLand(i + k, j - k, c))
-    {
-      toLocations.push_back({ i - k,j - k });
-    }
-    else
-    {
+  for (int k = 1; (i - k >= 0 && k + j < 7); k++) {
+    if (canLand(i - k, j + k, c)) {
+      toLocations.push_back({i - k, k + j});
+    } else {
       break;
     }
-    if (canCapture(i + k, j - k, c))
-    {
+    if (canCapture(i - k, j + k, c)) {
+      break;
+    }
+  }
+  for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
+    if (canLand(i - k, j - k, c)) {
+      toLocations.push_back({i - k, j - k});
+    } else {
+      break;
+    }
+    if (canCapture(i - k, j - k, c)) {
+      break;
+    }
+  }
+  for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
+    if (canLand(i + k, j - k, c)) {
+      toLocations.push_back({i - k, j - k});
+    } else {
+      break;
+    }
+    if (canCapture(i + k, j - k, c)) {
       break;
     }
   }
 
   return toLocations;
-
 }
-
