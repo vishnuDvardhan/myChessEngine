@@ -9,7 +9,7 @@ int main() {
     printBoard();
 
 
-    auto rookLocations = rookToLocations(0, 0, Colours::white);
+    auto rookLocations = queenToLocations(4, 4, Colours::white);
     for (const auto& sq : rookLocations) {
         std::cout << map_to_string(sq.first, sq.second) << "\n";
     }
