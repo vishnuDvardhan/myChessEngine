@@ -90,8 +90,20 @@ bool canLand(int i, int j, Colours c) {
   return false;
 }
 
-bool canCapture(int i, int j, Colours c) {
+bool canKingLand(int i, int j, Colours c) {
+  if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
+    if (board[i][j] == Pieces::empty) {
+      return true;
+    }
+    if (c == Colours::white) {
+      return isBlack(i, j);
+    }
+    return isWhite(i, j);
+  }
+  return false;
+}
 
+bool canCapture(int i, int j, Colours c) {
   if (c == Colours::white) {
     return isBlack(i, j);
   }
@@ -118,6 +130,35 @@ bool canPawnCapture(int i, int j, Colours c) {
     return isWhite(i, j);
   }
   return false;
+}
+
+vector<pair<int, int>> kingToLocations(int i, int j, Colours c) {
+  vector<pair<int, int>> toLocations;
+  if (canKingLand(i + 1, j + 1, c)) {
+    toLocations.push_back({i + 1, j + 1});
+  }
+  if (canKingLand(i + 1, j, c)) {
+    toLocations.push_back({i + 1, j});
+  }
+  if (canKingLand(i + 1, j - 1, c)) {
+    toLocations.push_back({i + 1, j - 1});
+  }
+  if (canKingLand(i, j + 1, c)) {
+    toLocations.push_back({i, j + 1});
+  }
+  if (canKingLand(i, j - 1, c)) {
+    toLocations.push_back({i, j - 1});
+  }
+  if (canKingLand(i - 1, j + 1, c)) {
+    toLocations.push_back({i - 1, j + 1});
+  }
+  if (canKingLand(i - 1, j, c)) {
+    toLocations.push_back({i - 1, j});
+  }
+  if (canKingLand(i - 1, j - 1, c)) {
+    toLocations.push_back({i - 1, j - 1});
+  }
+  return toLocations;
 }
 
 vector<pair<int, int>> pawnToLocations(int i, int j, Colours c) {
@@ -236,7 +277,6 @@ vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
   vector<pair<int, int>> toLocations;
 
   for (int k = i + 1; k < 8; k++) {
-
     if (canLand(k, j, c)) {
       toLocations.push_back({k, j});
     } else {
@@ -257,7 +297,6 @@ vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
     }
   }
   for (int k = j - 1; k >= 0; k--) {
-
     if (canLand(i, k, c)) {
       toLocations.push_back({i, k});
     } else {
@@ -282,7 +321,6 @@ vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
 vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   vector<pair<int, int>> toLocations;
   for (int k = i + 1; k < 8; k++) {
-
     if (canLand(k, j, c)) {
       toLocations.push_back({k, j});
     } else {
@@ -303,7 +341,6 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
     }
   }
   for (int k = j - 1; k >= 0; k--) {
-
     if (canLand(i, k, c)) {
       toLocations.push_back({i, k});
     } else {
