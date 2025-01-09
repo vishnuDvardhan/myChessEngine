@@ -1,4 +1,6 @@
 
+#include <iostream>
+#include <string>
 #include <vector>
 using namespace std;
 
@@ -31,7 +33,7 @@ char pieceTable[13] = {'.', 'P', 'N', 'B', 'R', 'K', 'Q',
                        'p', 'n', 'b', 'r', 'k', 'q'};
 
 void initBoard() {
-  for (int i = 1; i < 7; i++) {
+  for (int i = 0; i <= 7; i++) {
     board[1][i] = Pieces::wPawn;
     board[6][i] = Pieces::bPawn;
   }
@@ -51,10 +53,6 @@ void initBoard() {
   board[7][3] = Pieces::bQueen;
   board[0][4] = Pieces::wKing;
   board[7][4] = Pieces::bKing;
-}
-
-string numberToSquare(int i, int j) {
-  return ((char)(j + 65) + to_string(i + 1));
 }
 
 void printBoard() {
@@ -98,6 +96,65 @@ bool canCapture(int i, int j, Colours c) {
     return isBlack(i, j);
   }
   return isWhite(i, j);
+}
+
+bool canPawnLand(int i, int j, Colours c) {
+  if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
+    if (board[i][j] == Pieces::empty) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool canPawnCapture(int i, int j, Colours c) {
+  if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
+    if (board[i][j] == Pieces::empty) {
+      return false;
+    }
+    if (c == Colours::white) {
+      return isBlack(i, j);
+    }
+    return isWhite(i, j);
+  }
+  return false;
+}
+
+vector<pair<int, int>> pawnToLocations(int i, int j, Colours c) {
+  vector<pair<int, int>> toLocations;
+  if (c == Colours::white) {
+    if (canPawnLand(i + 1, j, c)) {
+      toLocations.push_back({i + 1, j});
+      if (i == 1) {
+        if (canPawnLand(i + 2, j, c)) {
+          toLocations.push_back({i + 2, j});
+        }
+      }
+    }
+    if (canPawnCapture(i + 1, j + 1, c)) {
+      toLocations.push_back({i + 1, j + 1});
+    }
+    if (canPawnCapture(i + 1, j - 1, c)) {
+      toLocations.push_back({i + 1, j - 1});
+    }
+  }
+  if (c == Colours::black) {
+    if (canPawnLand(i - 1, j, c)) {
+      toLocations.push_back({i - 1, j});
+      if (i == 6) {
+        if (canPawnLand(i - 2, j, c)) {
+          toLocations.push_back({i - 2, j});
+        }
+      }
+    }
+    if (canPawnCapture(i - 1, j - 1, c)) {
+      toLocations.push_back({i - 1, j - 1});
+    }
+    if (canPawnCapture(i - 1, j + 1, c)) {
+      toLocations.push_back({i - 1, j + 1});
+    }
+  }
+  return toLocations;
 }
 
 vector<pair<int, int>> knightToLocations(int i, int j, Colours c) {
