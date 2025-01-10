@@ -78,7 +78,7 @@ bool isBlack(int i, int j) {
 }
 
 bool canLand(int i, int j, Colours c) {
-  if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (board[i][j] == Pieces::empty) {
       return true;
     }
@@ -91,7 +91,7 @@ bool canLand(int i, int j, Colours c) {
 }
 
 bool canKingLand(int i, int j, Colours c) {
-  if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (board[i][j] == Pieces::empty) {
       return true;
     }
@@ -230,7 +230,7 @@ vector<pair<int, int>> knightToLocations(int i, int j, Colours c) {
 
 vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
   vector<pair<int, int>> toLocations;
-  for (int k = 1; (k + i < 7 && k + j < 7); k++) {
+  for (int k = 1; (k + i <= 7 && k + j <= 7); k++) {
     if (canLand(i + k, j + k, c)) {
       toLocations.push_back({k + i, k + j});
     } else {
@@ -240,7 +240,7 @@ vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
       break;
     }
   }
-  for (int k = 1; (i - k >= 0 && k + j < 7); k++) {
+  for (int k = 1; (i - k >= 0 && k + j <= 7); k++) {
     if (canLand(i - k, j + k, c)) {
       toLocations.push_back({i - k, k + j});
     } else {
@@ -262,7 +262,7 @@ vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
   }
   for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
     if (canLand(i + k, j - k, c)) {
-      toLocations.push_back({i - k, j - k});
+      toLocations.push_back({i + k, j - k});
     } else {
       break;
     }
@@ -392,7 +392,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
     if (canLand(i + k, j - k, c)) {
-      toLocations.push_back({i - k, j - k});
+      toLocations.push_back({i + k, j - k});
     } else {
       break;
     }
