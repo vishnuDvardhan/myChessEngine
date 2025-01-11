@@ -51,6 +51,15 @@ TEST(TurnGenerationTests, PawnTurns) {
   ASSERT_EQ(pawnTurnsActual, pawnTurnsExpected);
 }
 
+TEST(TurnGenerationTests, KnightsTurns) {
+  vector<pair<int, int>> knightTurnsActual =
+      knightToLocations(1, 1, Colours::white);
+
+  vector<pair<int, int>> knightTurnsExpected = {{3, 2}, {3, 0}, {2, 3}};
+
+  ASSERT_EQ(knightTurnsActual, knightTurnsExpected);
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   initBoard();
