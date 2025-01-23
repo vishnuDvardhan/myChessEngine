@@ -4,6 +4,8 @@
 #include <vector>
 using namespace std;
 
+typedef pair<int, int> Square;
+
 enum Pieces : int {
   empty,
   wPawn,
@@ -18,6 +20,21 @@ enum Pieces : int {
   bRook,
   bKing,
   bQueen
+};
+
+struct Turn {
+  Square from;
+  Square to;
+  Pieces promotionPiece = Pieces::empty;
+
+  Turn(Square f, Square t, Pieces p = Pieces::empty)
+      : from(f), to(t), promotionPiece(p) {}
+
+  // Equality operator
+  bool operator==(const Turn& other) const {
+    return from == other.from && to == other.to &&
+           promotionPiece == other.promotionPiece;
+  }
 };
 
 enum Colours : int { black, white };
@@ -77,6 +94,8 @@ bool isBlack(int i, int j) {
          board[i][j] == Pieces::bQueen || board[i][j] == Pieces::bKing;
 }
 
+void GeneratePseudoCorrectMoves(Pieces p) {}
+
 bool canLand(int i, int j, Colours c) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (board[i][j] == Pieces::empty) {
@@ -132,107 +151,108 @@ bool canPawnCapture(int i, int j, Colours c) {
   return false;
 }
 
-vector<pair<int, int>> kingToLocations(int i, int j, Colours c) {
-  vector<pair<int, int>> toLocations;
+vector<Turn> kingToLocations(int i, int j, Colours c) {
+  vector<Turn> toLocations;
   if (canKingLand(i + 1, j + 1, c)) {
-    toLocations.push_back({i + 1, j + 1});
+    toLocations.push_back({{i, j}, {i + 1, j + 1}});
   }
   if (canKingLand(i + 1, j, c)) {
-    toLocations.push_back({i + 1, j});
+    toLocations.push_back({{i, j}, {i + 1, j}});
   }
   if (canKingLand(i + 1, j - 1, c)) {
-    toLocations.push_back({i + 1, j - 1});
+    toLocations.push_back({{i, j}, {i + 1, j - 1}});
   }
   if (canKingLand(i, j + 1, c)) {
-    toLocations.push_back({i, j + 1});
+    toLocations.push_back({{i, j}, {i, j + 1}});
   }
   if (canKingLand(i, j - 1, c)) {
-    toLocations.push_back({i, j - 1});
+    toLocations.push_back({{i, j}, {i, j - 1}});
   }
   if (canKingLand(i - 1, j + 1, c)) {
-    toLocations.push_back({i - 1, j + 1});
+    toLocations.push_back({{i, j}, {i - 1, j + 1}});
   }
   if (canKingLand(i - 1, j, c)) {
-    toLocations.push_back({i - 1, j});
+    toLocations.push_back({{i, j}, {i - 1, j}});
   }
   if (canKingLand(i - 1, j - 1, c)) {
-    toLocations.push_back({i - 1, j - 1});
+    toLocations.push_back({{i, j}, {i - 1, j - 1}});
   }
   return toLocations;
 }
 
-vector<pair<int, int>> pawnToLocations(int i, int j, Colours c) {
-  vector<pair<int, int>> toLocations;
+vector<Turn> pawnToLocations(int i, int j, Colours c) {
+  vector<Turn> toLocations;
   if (c == Colours::white) {
     if (canPawnLand(i + 1, j, c)) {
-      toLocations.push_back({i + 1, j});
+      toLocations.push_back({{i, j}, {i + 1, j}});
       if (i == 1) {
         if (canPawnLand(i + 2, j, c)) {
-          toLocations.push_back({i + 2, j});
+          toLocations.push_back({{i, j}, {i + 2, j}});
         }
       }
     }
     if (canPawnCapture(i + 1, j + 1, c)) {
-      toLocations.push_back({i + 1, j + 1});
+      toLocations.push_back({{i, j}, {i + 1, j + 1}});
     }
     if (canPawnCapture(i + 1, j - 1, c)) {
-      toLocations.push_back({i + 1, j - 1});
+      toLocations.push_back({{i, j}, {i + 1, j - 1}});
     }
   }
   if (c == Colours::black) {
     if (canPawnLand(i - 1, j, c)) {
-      toLocations.push_back({i - 1, j});
+      toLocations.push_back({{i, j}, {i - 1, j}});
       if (i == 6) {
         if (canPawnLand(i - 2, j, c)) {
-          toLocations.push_back({i - 2, j});
+          toLocations.push_back({{i, j}, {i - 2, j}});
         }
       }
     }
     if (canPawnCapture(i - 1, j - 1, c)) {
-      toLocations.push_back({i - 1, j - 1});
+      toLocations.push_back({{i, j}, {i - 1, j - 1}});
     }
     if (canPawnCapture(i - 1, j + 1, c)) {
-      toLocations.push_back({i - 1, j + 1});
+      toLocations.push_back({{i, j}, {i - 1, j + 1}});
     }
   }
   return toLocations;
 }
 
-vector<pair<int, int>> knightToLocations(int i, int j, Colours c) {
-  vector<pair<int, int>> toLocations;
+vector<Turn> knightToLocations(int i, int j, Colours c) {
+  vector<Turn> toLocations;
   if (canLand(i + 2, j + 1, c)) {
-    toLocations.push_back({i + 2, j + 1});
+    toLocations.push_back({{i, j}, {i + 2, j + 1}});
   }
   if (canLand(i + 2, j - 1, c)) {
-    toLocations.push_back({i + 2, j - 1});
+    toLocations.push_back({{i, j}, {i + 2, j - 1}});
   }
   if (canLand(i + 1, j + 2, c)) {
-    toLocations.push_back({i + 1, j + 2});
+    toLocations.push_back({{i, j}, {i + 1, j + 2}});
   }
   if (canLand(i + 1, j - 2, c)) {
-    toLocations.push_back({i + 1, j - 2});
+    toLocations.push_back({{i, j}, {i + 1, j - 2}});
   }
   if (canLand(i - 2, j + 1, c)) {
-    toLocations.push_back({i - 2, j + 1});
+    toLocations.push_back({{i, j}, {i - 2, j + 1}});
   }
   if (canLand(i - 2, j - 1, c)) {
-    toLocations.push_back({i - 2, j - 1});
+    toLocations.push_back({{i, j}, {i - 2, j - 1}});
   }
   if (canLand(i - 1, j + 2, c)) {
-    toLocations.push_back({i - 1, j + 2});
+    toLocations.push_back({{i, j}, {i - 1, j + 2}});
   }
   if (canLand(i - 1, j - 2, c)) {
-    toLocations.push_back({i - 1, j - 2});
+    toLocations.push_back({{i, j}, {i - 1, j - 2}});
   }
 
   return toLocations;
 }
 
-vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
-  vector<pair<int, int>> toLocations;
-  for (int k = 1; (k + i <= 7 && k + j <= 7); k++) {
+vector<Turn> bishopToLocations(int i, int j, Colours c) {
+  vector<Turn> toLocations;
+
+  for (int k = 1; (i + k <= 7 && j + k <= 7); k++) {
     if (canLand(i + k, j + k, c)) {
-      toLocations.push_back({k + i, k + j});
+      toLocations.push_back({{i, j}, {i + k, j + k}});
     } else {
       break;
     }
@@ -240,9 +260,9 @@ vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
       break;
     }
   }
-  for (int k = 1; (i - k >= 0 && k + j <= 7); k++) {
+  for (int k = 1; (i - k >= 0 && j + k <= 7); k++) {
     if (canLand(i - k, j + k, c)) {
-      toLocations.push_back({i - k, k + j});
+      toLocations.push_back({{i, j}, {i - k, j + k}});
     } else {
       break;
     }
@@ -252,7 +272,7 @@ vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
   }
   for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
     if (canLand(i - k, j - k, c)) {
-      toLocations.push_back({i - k, j - k});
+      toLocations.push_back({{i, j}, {i - k, j - k}});
     } else {
       break;
     }
@@ -260,9 +280,9 @@ vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
       break;
     }
   }
-  for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
+  for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
     if (canLand(i + k, j - k, c)) {
-      toLocations.push_back({i + k, j - k});
+      toLocations.push_back({{i, j}, {i + k, j - k}});
     } else {
       break;
     }
@@ -270,15 +290,16 @@ vector<pair<int, int>> bishopToLocations(int i, int j, Colours c) {
       break;
     }
   }
+
   return toLocations;
 }
 
-vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
-  vector<pair<int, int>> toLocations;
+vector<Turn> rookToLocations(int i, int j, Colours c) {
+  vector<Turn> toLocations;
 
   for (int k = i + 1; k < 8; k++) {
     if (canLand(k, j, c)) {
-      toLocations.push_back({k, j});
+      toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
@@ -288,7 +309,7 @@ vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
   }
   for (int k = i - 1; k >= 0; k--) {
     if (canLand(k, j, c)) {
-      toLocations.push_back({k, j});
+      toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
@@ -298,7 +319,7 @@ vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
   }
   for (int k = j - 1; k >= 0; k--) {
     if (canLand(i, k, c)) {
-      toLocations.push_back({i, k});
+      toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
@@ -308,7 +329,7 @@ vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
   }
   for (int k = j + 1; k < 8; k++) {
     if (canLand(i, k, c)) {
-      toLocations.push_back({i, k});
+      toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
@@ -318,11 +339,11 @@ vector<pair<int, int>> rookToLocations(int i, int j, Colours c) {
   }
   return toLocations;
 }
-vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
-  vector<pair<int, int>> toLocations;
+vector<Turn> queenToLocations(int i, int j, Colours c) {
+  vector<Turn> toLocations;
   for (int k = i + 1; k < 8; k++) {
     if (canLand(k, j, c)) {
-      toLocations.push_back({k, j});
+      toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
@@ -332,7 +353,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = i - 1; k >= 0; k--) {
     if (canLand(k, j, c)) {
-      toLocations.push_back({k, j});
+      toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
@@ -342,7 +363,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = j - 1; k >= 0; k--) {
     if (canLand(i, k, c)) {
-      toLocations.push_back({i, k});
+      toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
@@ -352,7 +373,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = j + 1; k < 8; k++) {
     if (canLand(i, k, c)) {
-      toLocations.push_back({i, k});
+      toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
@@ -362,7 +383,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = 1; (k + i < 7 && k + j < 7); k++) {
     if (canLand(i + k, j + k, c)) {
-      toLocations.push_back({k + i, k + j});
+      toLocations.push_back({{i, j}, {k + i, k + j}});
     } else {
       break;
     }
@@ -372,7 +393,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = 1; (i - k >= 0 && k + j < 7); k++) {
     if (canLand(i - k, j + k, c)) {
-      toLocations.push_back({i - k, k + j});
+      toLocations.push_back({{i, j}, {i - k, k + j}});
     } else {
       break;
     }
@@ -382,7 +403,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
     if (canLand(i - k, j - k, c)) {
-      toLocations.push_back({i - k, j - k});
+      toLocations.push_back({{i, j}, {i - k, j - k}});
     } else {
       break;
     }
@@ -392,7 +413,7 @@ vector<pair<int, int>> queenToLocations(int i, int j, Colours c) {
   }
   for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
     if (canLand(i + k, j - k, c)) {
-      toLocations.push_back({i + k, j - k});
+      toLocations.push_back({{i, j}, {i + k, j - k}});
     } else {
       break;
     }

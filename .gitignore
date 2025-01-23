@@ -1,2 +1,5 @@
 m
 a.out
+lcov.info
+build/
+CMakeFiles/
