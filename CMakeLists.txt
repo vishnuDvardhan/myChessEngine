@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 11)
 enable_testing()
 
 # Add executable for tests
-add_executable(unitTests tests.cc)
+add_executable(unitTests board_tests.cc)
 
 # Link libraries using the keyword signature
 target_link_libraries(unitTests PRIVATE /usr/lib/libgtest.a /usr/lib/libgtest_main.a pthread)

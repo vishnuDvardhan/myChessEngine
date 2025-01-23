@@ -22,6 +22,26 @@ enum Pieces : int {
   bQueen
 };
 
+Pieces board[8][8];
+
+Square getPieceLocation(Pieces piece) {
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      if (board[i][j] == piece) {
+        return {i, j};
+      }
+    }
+  }
+  return {-1, -1};
+}
+
+int getDistance(int x1, int y1, int x2, int y2) {
+  int dx = abs(x2 - x1);
+  int dy = abs(y2 - y1);
+  int distance = max(dx, dy);
+  return distance;
+}
+
 struct Turn {
   Square from;
   Square to;
@@ -30,10 +50,25 @@ struct Turn {
   Turn(Square f, Square t, Pieces p = Pieces::empty)
       : from(f), to(t), promotionPiece(p) {}
 
-  // Equality operator
   bool operator==(const Turn& other) const {
     return from == other.from && to == other.to &&
            promotionPiece == other.promotionPiece;
+  }
+
+  std::string str() const {
+    std::ostringstream os;
+    os << "(" << from.first << ", " << from.second << "), "
+       << "--> (" << to.first << ", " << to.second << ")";
+    if (promotionPiece != Pieces::empty) {
+      os << ", Promotion: " << static_cast<int>(promotionPiece);
+    }
+    os << "\n";
+    return os.str();
+  }
+
+  friend std::ostream& operator<<(std::ostream& os, const Turn& turn) {
+    os << turn.str();
+    return os;
   }
 };
 
@@ -45,7 +80,6 @@ std::string map_to_string(int i, int j) {
   return std::string(1, column) + std::string(1, row);
 }
 
-Pieces board[8][8];
 char pieceTable[13] = {'.', 'P', 'N', 'B', 'R', 'K', 'Q',
                        'p', 'n', 'b', 'r', 'k', 'q'};
 
@@ -109,19 +143,15 @@ bool canLand(int i, int j, Colours c) {
   return false;
 }
 
-bool canKingLand(int i, int j, Colours c) {
+bool canKingLand(int i, int j, Colours c, Square OppositeKingSquare) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (board[i][j] == Pieces::empty) {
+    if (canLand(i, j, c) && (getDistance(i, j, OppositeKingSquare.first,
+                                         OppositeKingSquare.second) > 1)) {
       return true;
     }
-    if (c == Colours::white) {
-      return isBlack(i, j);
-    }
-    return isWhite(i, j);
   }
   return false;
 }
-
 bool canCapture(int i, int j, Colours c) {
   if (c == Colours::white) {
     return isBlack(i, j);
@@ -153,28 +183,31 @@ bool canPawnCapture(int i, int j, Colours c) {
 
 vector<Turn> kingToLocations(int i, int j, Colours c) {
   vector<Turn> toLocations;
-  if (canKingLand(i + 1, j + 1, c)) {
+  Pieces oppositeKing = c == Colours::white ? Pieces::bKing : Pieces::wKing;
+  Square oppositeKingSquare = getPieceLocation(oppositeKing);
+
+  if (canKingLand(i + 1, j + 1, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i + 1, j + 1}});
   }
-  if (canKingLand(i + 1, j, c)) {
+  if (canKingLand(i + 1, j, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i + 1, j}});
   }
-  if (canKingLand(i + 1, j - 1, c)) {
+  if (canKingLand(i + 1, j - 1, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i + 1, j - 1}});
   }
-  if (canKingLand(i, j + 1, c)) {
+  if (canKingLand(i, j + 1, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i, j + 1}});
   }
-  if (canKingLand(i, j - 1, c)) {
+  if (canKingLand(i, j - 1, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i, j - 1}});
   }
-  if (canKingLand(i - 1, j + 1, c)) {
+  if (canKingLand(i - 1, j + 1, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i - 1, j + 1}});
   }
-  if (canKingLand(i - 1, j, c)) {
+  if (canKingLand(i - 1, j, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i - 1, j}});
   }
-  if (canKingLand(i - 1, j - 1, c)) {
+  if (canKingLand(i - 1, j - 1, c, oppositeKingSquare)) {
     toLocations.push_back({{i, j}, {i - 1, j - 1}});
   }
   return toLocations;

@@ -3,11 +3,16 @@
 #include "board.h"
 
 TEST(TurnGenerationTests, KingTurns) {
-  vector<Turn> kingTurnsActual = kingToLocations(1, 1, Colours::white);
+  vector<Turn> kingTurnsActual;
 
-  vector<Turn> kingTurnsExpected = {
-      {{1, 1}, {2, 2}}, {{1, 1}, {2, 1}}, {{1, 1}, {2, 0}}};
+  vector<Turn> kingTurnsExpected;
 
+  kingTurnsActual = kingToLocations(6, 3, Colours::white);
+  kingTurnsExpected = {{{6, 3}, {7, 2}},
+                       {{6, 3}, {6, 2}},
+                       {{6, 3}, {5, 4}},
+                       {{6, 3}, {5, 3}},
+                       {{6, 3}, {5, 2}}};
   ASSERT_EQ(kingTurnsActual, kingTurnsExpected);
 }
 

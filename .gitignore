@@ -3,3 +3,12 @@ a.out
 lcov.info
 build/
 CMakeFiles/
+Testing/Temporary/LastTest.log
+Testing/Temporary/CTestCostData.txt
+Testing/Temporary/LastTestsFailed.log
+unitTests
+Makefile
+m-tests.gcda
+CTestTestfile.cmake
+CMakeCache.txt
+cmake_install.cmake
