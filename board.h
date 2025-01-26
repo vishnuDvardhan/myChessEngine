@@ -21,13 +21,16 @@ enum Pieces : int {
   bKing,
   bQueen
 };
+struct gameState {
+  Pieces board[8][8];
+};
 
-Pieces board[8][8];
+gameState currentState;
 
 Square getPieceLocation(Pieces piece) {
   for (int i = 0; i < 8; i++) {
     for (int j = 0; j < 8; j++) {
-      if (board[i][j] == piece) {
+      if (currentState.board[i][j] == piece) {
         return {i, j};
       }
     }
@@ -46,6 +49,7 @@ struct Turn {
   Square from;
   Square to;
   Pieces promotionPiece = Pieces::empty;
+  bool castling = false;
 
   Turn(Square f, Square t, Pieces p = Pieces::empty)
       : from(f), to(t), promotionPiece(p) {}
@@ -72,6 +76,13 @@ struct Turn {
   }
 };
 
+struct Castling {
+  bool wkingSide = true;
+  bool wQueenSide = true;
+  bool bKingSide = true;
+  bool bQueenSide = true;
+};
+
 enum Colours : int { black, white };
 
 std::string map_to_string(int i, int j) {
@@ -85,31 +96,31 @@ char pieceTable[13] = {'.', 'P', 'N', 'B', 'R', 'K', 'Q',
 
 void initBoard() {
   for (int i = 0; i <= 7; i++) {
-    board[1][i] = Pieces::wPawn;
-    board[6][i] = Pieces::bPawn;
+    currentState.board[1][i] = Pieces::wPawn;
+    currentState.board[6][i] = Pieces::bPawn;
   }
-  board[0][0] = Pieces::wRook;
-  board[0][7] = Pieces::wRook;
-  board[7][0] = Pieces::bRook;
-  board[7][7] = Pieces::bRook;
-  board[0][1] = Pieces::wBishop;
-  board[0][6] = Pieces::wBishop;
-  board[7][1] = Pieces::bBishop;
-  board[7][6] = Pieces::bBishop;
-  board[0][2] = Pieces::wKnight;
-  board[0][5] = Pieces::wKnight;
-  board[7][2] = Pieces::bKnight;
-  board[7][5] = Pieces::bKnight;
-  board[0][3] = Pieces::wQueen;
-  board[7][3] = Pieces::bQueen;
-  board[0][4] = Pieces::wKing;
-  board[7][4] = Pieces::bKing;
+  currentState.board[0][0] = Pieces::wRook;
+  currentState.board[0][7] = Pieces::wRook;
+  currentState.board[7][0] = Pieces::bRook;
+  currentState.board[7][7] = Pieces::bRook;
+  currentState.board[0][1] = Pieces::wBishop;
+  currentState.board[0][6] = Pieces::wBishop;
+  currentState.board[7][1] = Pieces::bBishop;
+  currentState.board[7][6] = Pieces::bBishop;
+  currentState.board[0][2] = Pieces::wKnight;
+  currentState.board[0][5] = Pieces::wKnight;
+  currentState.board[7][2] = Pieces::bKnight;
+  currentState.board[7][5] = Pieces::bKnight;
+  currentState.board[0][3] = Pieces::wQueen;
+  currentState.board[7][3] = Pieces::bQueen;
+  currentState.board[0][4] = Pieces::wKing;
+  currentState.board[7][4] = Pieces::bKing;
 }
 
 void printBoard() {
   for (int i = 7; i >= 0; i--) {
     for (int j = 0; j < 8; j++) {
-      cout << pieceTable[static_cast<int>(board[i][j])] << " ";
+      cout << pieceTable[static_cast<int>(currentState.board[i][j])] << " ";
     }
     cout << "\n";
   }
@@ -117,22 +128,28 @@ void printBoard() {
 }
 
 bool isWhite(int i, int j) {
-  return board[i][j] == Pieces::wPawn || board[i][j] == Pieces::wKnight ||
-         board[i][j] == Pieces::wBishop || board[i][j] == Pieces::wRook ||
-         board[i][j] == Pieces::wQueen || board[i][j] == Pieces::wKing;
+  return currentState.board[i][j] == Pieces::wPawn ||
+         currentState.board[i][j] == Pieces::wKnight ||
+         currentState.board[i][j] == Pieces::wBishop ||
+         currentState.board[i][j] == Pieces::wRook ||
+         currentState.board[i][j] == Pieces::wQueen ||
+         currentState.board[i][j] == Pieces::wKing;
 }
 
 bool isBlack(int i, int j) {
-  return board[i][j] == Pieces::bPawn || board[i][j] == Pieces::bKnight ||
-         board[i][j] == Pieces::bBishop || board[i][j] == Pieces::bRook ||
-         board[i][j] == Pieces::bQueen || board[i][j] == Pieces::bKing;
+  return currentState.board[i][j] == Pieces::bPawn ||
+         currentState.board[i][j] == Pieces::bKnight ||
+         currentState.board[i][j] == Pieces::bBishop ||
+         currentState.board[i][j] == Pieces::bRook ||
+         currentState.board[i][j] == Pieces::bQueen ||
+         currentState.board[i][j] == Pieces::bKing;
 }
 
 void GeneratePseudoCorrectMoves(Pieces p) {}
 
 bool canLand(int i, int j, Colours c) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (board[i][j] == Pieces::empty) {
+    if (currentState.board[i][j] == Pieces::empty) {
       return true;
     }
     if (c == Colours::white) {
@@ -161,7 +178,7 @@ bool canCapture(int i, int j, Colours c) {
 
 bool canPawnLand(int i, int j, Colours c) {
   if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
-    if (board[i][j] == Pieces::empty) {
+    if (currentState.board[i][j] == Pieces::empty) {
       return true;
     }
   }
@@ -170,7 +187,7 @@ bool canPawnLand(int i, int j, Colours c) {
 
 bool canPawnCapture(int i, int j, Colours c) {
   if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
-    if (board[i][j] == Pieces::empty) {
+    if (currentState.board[i][j] == Pieces::empty) {
       return false;
     }
     if (c == Colours::white) {
