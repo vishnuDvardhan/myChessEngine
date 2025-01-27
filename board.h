@@ -61,8 +61,8 @@ struct Turn {
 
   std::string str() const {
     std::ostringstream os;
-    os << "(" << from.first << ", " << from.second << "), "
-       << "--> (" << to.first << ", " << to.second << ")";
+    os << "{{" << from.first << ", " << from.second << "}, "
+       << "{" << to.first << ", " << to.second << "}}";
     if (promotionPiece != Pieces::empty) {
       os << ", Promotion: " << static_cast<int>(promotionPiece);
     }
@@ -473,4 +473,253 @@ vector<Turn> queenToLocations(int i, int j, Colours c) {
   }
 
   return toLocations;
+}
+
+bool canCaptureAPawn(int i, int j, Colours c) {
+  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+    if (c == Colours::white) {
+      return currentState.board[i][j] == Pieces::bPawn;
+    }
+    return currentState.board[i][j] == Pieces::wPawn;
+  }
+  return false;
+}
+
+bool canCaptureAKnight(int i, int j, Colours c) {
+  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+    if (c == Colours::white) {
+      return currentState.board[i][j] == Pieces::bKnight;
+    }
+    return currentState.board[i][j] == Pieces::wKnight;
+  }
+  return false;
+}
+
+bool canCaptureARookOrQueen(int i, int j, Colours c) {
+  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+    if (c == Colours::white) {
+      return (currentState.board[i][j] == Pieces::bRook) ||
+             (currentState.board[i][j] == Pieces::bQueen);
+    }
+    return (currentState.board[i][j] == Pieces::wRook) ||
+           (currentState.board[i][j] == Pieces::wQueen);
+    ;
+  }
+  return false;
+}
+
+bool canCaptureABishopOrQueen(int i, int j, Colours c) {
+  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+    if (c == Colours::white) {
+      return (currentState.board[i][j] == Pieces::bBishop) ||
+             (currentState.board[i][j] == Pieces::bQueen);
+    }
+    return (currentState.board[i][j] == Pieces::wBishop) ||
+           (currentState.board[i][j] == Pieces::wQueen);
+    ;
+  }
+  return false;
+}
+
+bool pawnCaptures(int i, int j, Colours c) {
+  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+    if (Colours::white == c) {
+      return canCaptureAPawn(i + 1, j + 1, c) ||
+             canCaptureAPawn(i + 1, j - 1, c);
+    }
+    return canCaptureAPawn(i - 1, j + 1, c) || canCaptureAPawn(i - 1, j - 1, c);
+  }
+  return false;
+}
+
+bool knightCaptures(int i, int j, Colours c) {
+  return (canCaptureAKnight(i + 1, j + 2, c) ||
+          canCaptureAKnight(i + 1, j - 2, c) ||
+          canCaptureAKnight(i + 2, j + 1, c) ||
+          canCaptureAKnight(i + 2, j - 1, c) ||
+          canCaptureAKnight(i - 1, j + 2, c) ||
+          canCaptureAKnight(i - 1, j - 2, c) ||
+          canCaptureAKnight(i - 2, j + 1, c) ||
+          canCaptureAKnight(i - 2, j - 1, c));
+}
+
+bool rookOrQueenCaptures(int i, int j, Colours c) {
+  for (int k = i + 1; k < 8; k++) {
+    if (!canLand(k, j, c)) {
+      break;
+    } else if (canCaptureARookOrQueen(k, j, c)) {
+      return true;
+    }
+  }
+  for (int k = i - 1; k < 8; k--) {
+    if (!canLand(k, j, c)) {
+      break;
+    } else if (canCaptureARookOrQueen(k, j, c)) {
+      return true;
+    }
+  }
+  for (int k = j - 1; k < 8; k--) {
+    if (!canLand(k, j, c)) {
+      break;
+    } else if (canCaptureARookOrQueen(i, k, c)) {
+      return true;
+    }
+  }
+  for (int k = j + 1; k < 8; k++) {
+    if (!canLand(k, j, c)) {
+      break;
+    } else if (canCaptureARookOrQueen(i, k, c)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool bishopOrQueenCaptures(int i, int j, Colours c) {
+  for (int k = 1; (i + k <= 7 && j + k <= 7); k++) {
+    if (!canLand(i + k, j + k, c)) {
+      break;
+    }
+    if (canCaptureABishopOrQueen(i + k, j + k, c)) {
+      return true;
+    }
+  }
+  for (int k = 1; (i - k >= 0 && j + k <= 7); k++) {
+    if (!canLand(i - k, j + k, c)) {
+      break;
+    }
+    if (canCapture(i - k, j + k, c)) {
+      return true;
+    }
+  }
+  for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
+    if (!canLand(i - k, j - k, c)) {
+      break;
+    }
+    if (canCapture(i - k, j - k, c)) {
+      return true;
+    }
+  }
+  for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
+    if (canLand(i + k, j - k, c)) {
+    } else {
+      break;
+    }
+    if (canCapture(i + k, j - k, c)) {
+      break;
+    }
+  }
+  return false;
+}
+
+bool isInCheck(int i, int j, Colours currentColour) {
+  if (pawnCaptures(i, j, currentColour)) {
+    return true;
+  }
+  if (knightCaptures(i, j, currentColour)) {
+    return true;
+  }
+  if (rookOrQueenCaptures(i, j, currentColour)) {
+    return true;
+  }
+  if (bishopOrQueenCaptures(i, j, currentColour)) {
+    return true;
+  }
+  return false;
+}
+
+bool isEmpty(int i, int j) { return currentState.board[i][j] == Pieces::empty; }
+
+bool isRook(int i, int j) {
+  return currentState.board[i][j] == Pieces::wRook ||
+         currentState.board[i][j] == Pieces::bRook;
+}
+
+bool isKnight(int i, int j) {
+  return currentState.board[i][j] == Pieces::wKnight ||
+         currentState.board[i][j] == Pieces::bKnight;
+}
+
+bool isPawn(int i, int j) {
+  return currentState.board[i][j] == Pieces::wPawn ||
+         currentState.board[i][j] == Pieces::bPawn;
+}
+
+bool isBishop(int i, int j) {
+  return currentState.board[i][j] == Pieces::wBishop ||
+         currentState.board[i][j] == Pieces::bBishop;
+}
+
+bool isQueen(int i, int j) {
+  return currentState.board[i][j] == Pieces::wQueen ||
+         currentState.board[i][j] == Pieces::bQueen;
+}
+
+bool isKing(int i, int j) {
+  return currentState.board[i][j] == Pieces::wKing ||
+         currentState.board[i][j] == Pieces::bKing;
+}
+
+vector<Turn> getPseudoCorrect(Colours colour) {
+  vector<Turn> toLocations;
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      if (isEmpty(i, j) || (colour == Colours::white && !isWhite(i, j)) ||
+          (colour == Colours::black && !isBlack(i, j))) {
+        continue;
+      }
+      if (isPawn(i, j)) {
+        auto pawnLocations = pawnToLocations(i, j, colour);
+        toLocations.insert(toLocations.end(), pawnLocations.begin(),
+                           pawnLocations.end());
+      }
+      if (isKnight(i, j)) {
+        auto knightLocations = knightToLocations(i, j, colour);
+        toLocations.insert(toLocations.end(), knightLocations.begin(),
+                           knightLocations.end());
+      }
+      if (isBishop(i, j)) {
+        auto bishopLocations = bishopToLocations(i, j, colour);
+        toLocations.insert(toLocations.end(), bishopLocations.begin(),
+                           bishopLocations.end());
+      }
+      if (isRook(i, j)) {
+        auto rookLocations = rookToLocations(i, j, colour);
+        toLocations.insert(toLocations.end(), rookLocations.begin(),
+                           rookLocations.end());
+      }
+      if (isQueen(i, j)) {
+        auto queenLocations = queenToLocations(i, j, colour);
+        toLocations.insert(toLocations.end(), queenLocations.begin(),
+                           queenLocations.end());
+      }
+      if (isKing(i, j)) {
+        auto kingLocations = kingToLocations(i, j, colour);
+        toLocations.insert(toLocations.end(), kingLocations.begin(),
+                           kingLocations.end());
+      }
+    }
+  }
+  return toLocations;
+}
+
+void applyTurn(Turn turn) {
+  currentState.board[turn.to.first][turn.to.second] =
+      currentState.board[turn.from.first][turn.from.second];
+  currentState.board[turn.from.first][turn.from.second] = Pieces::empty;
+}
+
+vector<Turn> generateTurns(Colours c) {
+  vector<Turn> turns;
+  for (auto& turn : getPseudoCorrect(c)) {
+    gameState originalState = currentState;
+    applyTurn(turn);
+    Pieces king = c == Colours::white ? Pieces::wKing : Pieces::bKing;
+    Square kingLocation = getPieceLocation(king);
+    if (!isInCheck(kingLocation.first, kingLocation.second, c)) {
+      turns.push_back(turn);
+    }
+    currentState = originalState;
+  }
+  return turns;
 }
