@@ -106,12 +106,17 @@ struct Turn {
 
   std::string str() const {
     std::ostringstream os;
-    os << "{{" << from.first << ", " << from.second << "}, "
-       << "{" << to.first << ", " << to.second << "}}";
-    if (promotionPiece != Pieces::empty) {
-      os << ", Promotion: " << static_cast<int>(promotionPiece);
-    }
-    os << "\n";
+    os << "\n{{" << from.first << ", " << from.second << "}, "
+       << "{" << to.first << ", " << to.second << "}, "
+       << "Pieces::"
+       << (promotionPiece == Pieces::empty
+               ? "empty"
+               : std::to_string(static_cast<int>(promotionPiece)))
+       << ", " << (castling ? "true" : "false") << ", "
+       << (isEnpassantInitiater ? "true" : "false") << ", "
+       << "{" << enpassantSquare.first << ", " << enpassantSquare.second
+       << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
+
     return os.str();
   }
 
