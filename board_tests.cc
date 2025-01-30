@@ -86,6 +86,16 @@ TEST(TurnGenerationsTests, GenerateCorrectTurnTests) {
   ASSERT_EQ(allTurnsActual, allTurnsExpected);
 }
 
+TEST(TurnGenerationsTests, Enpassanttest) {
+  initBoard();
+  currentState.board[3][3] = Pieces::bPawn;
+  printBoard();
+  applyTurn({{1, 2}, {3, 2}, Pieces::empty, false, true, {2, 2}, false});
+  printBoard();
+  applyTurn({{3, 3}, {2, 2}, Pieces::empty, false, false, {-1, -1}, true});
+  printBoard();
+}
+
 int main(int argc, char **argv) {
   testing::InitGoogleTest(&argc, argv);
   initBoard();
