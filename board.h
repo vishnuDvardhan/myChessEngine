@@ -25,6 +25,14 @@ struct gameState {
   Pieces board[8][8];
   Square enpassantSq = {-1, -1};
   bool canEnpassant = true;
+  bool wCastle = true;
+  bool bCastle = true;
+  struct Castling {
+    bool wkingSide = true;
+    bool wQueenSide = true;
+    bool bKingSide = true;
+    bool bQueenSide = true;
+  };
 };
 
 gameState currentState;
@@ -126,13 +134,6 @@ struct Turn {
   }
 };
 
-struct Castling {
-  bool wkingSide = true;
-  bool wQueenSide = true;
-  bool bKingSide = true;
-  bool bQueenSide = true;
-};
-
 enum Colours : int { black, white };
 
 std::string map_to_string(int i, int j) {
@@ -171,6 +172,7 @@ void initBoard() {
   currentState.board[7][3] = Pieces::bQueen;
   currentState.board[0][4] = Pieces::wKing;
   currentState.board[7][4] = Pieces::bKing;
+  currentState.enpassantSq = {-1, -1};
 }
 
 void printBoard() {
@@ -200,8 +202,6 @@ bool isBlack(int i, int j) {
          currentState.board[i][j] == Pieces::bQueen ||
          currentState.board[i][j] == Pieces::bKing;
 }
-
-void GeneratePseudoCorrectMoves(Pieces p) {}
 
 bool canLand(int i, int j, Colours c) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
@@ -732,6 +732,47 @@ bool isInCheck(int i, int j, Colours currentColour) {
   return false;
 }
 
+vector<Turn> getCastlingTurns(Colours c) {
+  vector<Turn> toLocations;
+
+  if (c == Colours::white) {
+    if (currentState.wCastle) {
+      if (currentState.board[0][1] == Pieces::empty &&
+          currentState.board[0][2] == Pieces::empty &&
+          currentState.board[0][3] == Pieces::empty) {
+        if (!isInCheck(0, 2, c) && !isInCheck(0, 3, c) && !isInCheck(0, 1, c) &&
+            !isInCheck(0, 4, c)) {
+          toLocations.push_back({{0, 4}, {0, 2}, Pieces::empty, true});
+        }
+      }
+      if (currentState.board[0][5] == Pieces::empty &&
+          currentState.board[0][6] == Pieces::empty) {
+        if (!isInCheck(0, 5, c) && !isInCheck(0, 6, c) && !isInCheck(0, 4, c)) {
+          toLocations.push_back({{0, 4}, {0, 6}, Pieces::empty, true});
+        }
+      }
+    }
+  } else {
+    if (currentState.bCastle) {
+      if (currentState.board[7][1] == Pieces::empty &&
+          currentState.board[7][2] == Pieces::empty &&
+          currentState.board[7][3] == Pieces::empty) {
+        if (!isInCheck(7, 2, c) && !isInCheck(7, 3, c) && !isInCheck(7, 1, c) &&
+            !isInCheck(7, 4, c)) {
+          toLocations.push_back({{7, 4}, {7, 2}, Pieces::empty, true});
+        }
+      }
+      if (currentState.board[7][5] == Pieces::empty &&
+          currentState.board[7][6] == Pieces::empty) {
+        if (!isInCheck(7, 5, c) && !isInCheck(7, 6, c) && !isInCheck(7, 4, c)) {
+          toLocations.push_back({{7, 4}, {7, 6}, Pieces::empty, true});
+        }
+      }
+    }
+  }
+  return toLocations;
+}
+
 vector<Turn> getPseudoCorrect(Colours colour) {
   vector<Turn> toLocations;
   for (int i = 0; i < 8; i++) {
@@ -772,6 +813,9 @@ vector<Turn> getPseudoCorrect(Colours colour) {
       }
     }
   }
+  auto castlingTurns = getCastlingTurns(colour);
+  toLocations.insert(toLocations.end(), castlingTurns.begin(),
+                     castlingTurns.end());
   return toLocations;
 }
 
@@ -787,6 +831,16 @@ void applyTurn(Turn turn) {
       currentState.board[i - 1][j] = Pieces::empty;
     } else {
       currentState.board[i + 1][j] = Pieces::empty;
+    }
+  }
+  if (turn.castling) {
+    if (j == 2) {
+      currentState.board[i][3] = currentState.board[i][0];
+      currentState.board[i][0] = Pieces::empty;
+    }
+    if (j == 6) {
+      currentState.board[i][5] = currentState.board[i][7];
+      currentState.board[i][7] = Pieces::empty;
     }
   }
 }
