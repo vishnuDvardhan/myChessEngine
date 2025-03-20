@@ -1,10 +1,16 @@
 
+#include <fstream>
 #include <iostream>
 #include <string>
 #include <vector>
 using namespace std;
 
+char pieceTable[13] = {'.', 'P', 'N', 'B', 'R', 'K', 'Q',
+                       'p', 'n', 'b', 'r', 'k', 'q'};
 typedef pair<int, int> Square;
+ofstream outFile("perft_debug.txt");
+
+enum Colours : int { black, white };
 
 enum Pieces : int {
   empty,
@@ -57,6 +63,7 @@ std::string pieceToString(Pieces piece) {
 struct gameState {
   Pieces board[8][8];
   Square enpassantSq = {-1, -1};
+  Colours currentColour = Colours::white;
   bool canEnpassant = true;
   bool wCastle = true;
   bool bCastle = true;
@@ -66,43 +73,58 @@ struct gameState {
     bool bKingSide = true;
     bool bQueenSide = true;
   };
+
+  void printBoard() {
+    for (int i = 7; i >= 0; i--) {
+      for (int j = 0; j < 8; j++) {
+        cout << pieceTable[static_cast<int>(board[i][j])] << " ";
+        // outFile << pieceTable[static_cast<int>(board[i][j])] << " ";
+      }
+      cout << "\n";
+      // outFile << "\n";
+    }
+    cout << "\n";
+    // outFile << "\n";
+  }
 };
 
-gameState currentState;
+// gameState currentState;
 
-bool isEmpty(int i, int j) { return currentState.board[i][j] == Pieces::empty; }
+bool isEmpty(int i, int j, gameState currentState) {
+  return currentState.board[i][j] == Pieces::empty;
+}
 
-bool isRook(int i, int j) {
+bool isRook(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::wRook ||
          currentState.board[i][j] == Pieces::bRook;
 }
 
-bool isKnight(int i, int j) {
+bool isKnight(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::wKnight ||
          currentState.board[i][j] == Pieces::bKnight;
 }
 
-bool isPawn(int i, int j) {
+bool isPawn(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::wPawn ||
          currentState.board[i][j] == Pieces::bPawn;
 }
 
-bool isBishop(int i, int j) {
+bool isBishop(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::wBishop ||
          currentState.board[i][j] == Pieces::bBishop;
 }
 
-bool isQueen(int i, int j) {
+bool isQueen(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::wQueen ||
          currentState.board[i][j] == Pieces::bQueen;
 }
 
-bool isKing(int i, int j) {
+bool isKing(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::wKing ||
          currentState.board[i][j] == Pieces::bKing;
 }
 
-Square getPieceLocation(Pieces piece) {
+Square getPieceLocation(Pieces piece, gameState currentState) {
   for (int i = 0; i < 8; i++) {
     for (int j = 0; j < 8; j++) {
       if (currentState.board[i][j] == piece) {
@@ -164,18 +186,14 @@ struct Turn {
   }
 };
 
-enum Colours : int { black, white };
-
 std::string map_to_string(int i, int j) {
   char column = 'a' + j;
   char row = '1' + i;
   return std::string(1, column) + std::string(1, row);
 }
 
-char pieceTable[13] = {'.', 'P', 'N', 'B', 'R', 'K', 'Q',
-                       'p', 'n', 'b', 'r', 'k', 'q'};
-
-void initBoard() {
+gameState initBoard() {
+  gameState currentState;
   for (int i = 0; i <= 7; i++) {
     currentState.board[1][i] = Pieces::wPawn;
     currentState.board[6][i] = Pieces::bPawn;
@@ -203,9 +221,11 @@ void initBoard() {
   currentState.board[0][4] = Pieces::wKing;
   currentState.board[7][4] = Pieces::bKing;
   currentState.enpassantSq = {-1, -1};
+  currentState.currentColour = Colours::white;
+  return currentState;
 }
 
-void printBoard() {
+void printBoard(gameState currentState) {
   for (int i = 7; i >= 0; i--) {
     for (int j = 0; j < 8; j++) {
       cout << pieceTable[static_cast<int>(currentState.board[i][j])] << " ";
@@ -215,7 +235,7 @@ void printBoard() {
   cout << "\n";
 }
 
-bool isWhite(int i, int j) {
+bool isWhite(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::wPawn ||
          currentState.board[i][j] == Pieces::wKnight ||
          currentState.board[i][j] == Pieces::wBishop ||
@@ -224,7 +244,7 @@ bool isWhite(int i, int j) {
          currentState.board[i][j] == Pieces::wKing;
 }
 
-bool isBlack(int i, int j) {
+bool isBlack(int i, int j, gameState currentState) {
   return currentState.board[i][j] == Pieces::bPawn ||
          currentState.board[i][j] == Pieces::bKnight ||
          currentState.board[i][j] == Pieces::bBishop ||
@@ -233,37 +253,39 @@ bool isBlack(int i, int j) {
          currentState.board[i][j] == Pieces::bKing;
 }
 
-bool canLand(int i, int j, Colours c) {
+bool canLand(int i, int j, Colours c, gameState currentState) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (currentState.board[i][j] == Pieces::empty) {
       return true;
     }
     if (c == Colours::white) {
-      return isBlack(i, j);
+      return isBlack(i, j, currentState);
     }
-    return isWhite(i, j);
+    return isWhite(i, j, currentState);
   }
   return false;
 }
 
-bool canKingLand(int i, int j, Colours c, Square OppositeKingSquare) {
+bool canKingLand(int i, int j, Colours c, Square OppositeKingSquare,
+                 gameState currentState) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (canLand(i, j, c) && (getDistance(i, j, OppositeKingSquare.first,
-                                         OppositeKingSquare.second) > 1)) {
+    if (canLand(i, j, c, currentState) &&
+        (getDistance(i, j, OppositeKingSquare.first,
+                     OppositeKingSquare.second) > 1)) {
       return true;
     }
   }
   return false;
 }
-bool canCapture(int i, int j, Colours c) {
+bool canCapture(int i, int j, Colours c, gameState currentState) {
   if (c == Colours::white) {
-    return isBlack(i, j);
+    return isBlack(i, j, currentState);
   }
-  return isWhite(i, j);
+  return isWhite(i, j, currentState);
 }
 
-bool canPawnLand(int i, int j, Colours c) {
-  if (i >= 0 || i <= 7 || j >= 0 || j <= 7) {
+bool canPawnLand(int i, int j, Colours c, gameState currentState) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (currentState.board[i][j] == Pieces::empty) {
       return true;
     }
@@ -271,65 +293,65 @@ bool canPawnLand(int i, int j, Colours c) {
   return false;
 }
 
-bool canPawnCapture(int i, int j, Colours c) {
+bool canPawnCapture(int i, int j, Colours c, gameState currentState) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (currentState.board[i][j] == Pieces::empty) {
       return false;
     }
     if (c == Colours::white) {
-      return isBlack(i, j);
+      return isBlack(i, j, currentState);
     }
-    return isWhite(i, j);
+    return isWhite(i, j, currentState);
   }
   return false;
 }
 
-bool canPawnEnpassant(int i, int j, Colours c) {
+bool canPawnEnpassant(int i, int j, Colours c, gameState currentState) {
   if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if ((i == currentState.enpassantSq.first) &&
         (j == currentState.enpassantSq.second)) {
-      return isEmpty(i, j);
+      return isEmpty(i, j, currentState);
     }
   }
   return false;
 }
 
-vector<Turn> kingToLocations(int i, int j, Colours c) {
+vector<Turn> kingToLocations(int i, int j, Colours c, gameState currentState) {
   vector<Turn> toLocations;
   Pieces oppositeKing = c == Colours::white ? Pieces::bKing : Pieces::wKing;
-  Square oppositeKingSquare = getPieceLocation(oppositeKing);
+  Square oppositeKingSquare = getPieceLocation(oppositeKing, currentState);
 
-  if (canKingLand(i + 1, j + 1, c, oppositeKingSquare)) {
+  if (canKingLand(i + 1, j + 1, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i + 1, j + 1}});
   }
-  if (canKingLand(i + 1, j, c, oppositeKingSquare)) {
+  if (canKingLand(i + 1, j, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i + 1, j}});
   }
-  if (canKingLand(i + 1, j - 1, c, oppositeKingSquare)) {
+  if (canKingLand(i + 1, j - 1, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i + 1, j - 1}});
   }
-  if (canKingLand(i, j + 1, c, oppositeKingSquare)) {
+  if (canKingLand(i, j + 1, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i, j + 1}});
   }
-  if (canKingLand(i, j - 1, c, oppositeKingSquare)) {
+  if (canKingLand(i, j - 1, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i, j - 1}});
   }
-  if (canKingLand(i - 1, j + 1, c, oppositeKingSquare)) {
+  if (canKingLand(i - 1, j + 1, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i - 1, j + 1}});
   }
-  if (canKingLand(i - 1, j, c, oppositeKingSquare)) {
+  if (canKingLand(i - 1, j, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i - 1, j}});
   }
-  if (canKingLand(i - 1, j - 1, c, oppositeKingSquare)) {
+  if (canKingLand(i - 1, j - 1, c, oppositeKingSquare, currentState)) {
     toLocations.push_back({{i, j}, {i - 1, j - 1}});
   }
   return toLocations;
 }
 
-vector<Turn> pawnToLocations(int i, int j, Colours c) {
+vector<Turn> pawnToLocations(int i, int j, Colours c, gameState currentState) {
   vector<Turn> toLocations;
   if (c == Colours::white) {
-    if (canPawnLand(i + 1, j, c)) {
+    if (canPawnLand(i + 1, j, c, currentState)) {
       if (i + 1 == 7) {
         toLocations.push_back({{i, j}, {i + 1, j}, Pieces::wQueen});
         toLocations.push_back({{i, j}, {i + 1, j}, Pieces::wRook});
@@ -340,13 +362,13 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
       }
 
       if (i == 1) {
-        if (canPawnLand(i + 2, j, c)) {
+        if (canPawnLand(i + 2, j, c, currentState)) {
           toLocations.push_back(
               {{i, j}, {i + 2, j}, Pieces::empty, false, true, {i + 1, j}});
         }
       }
     }
-    if (canPawnCapture(i + 1, j + 1, c)) {
+    if (canPawnCapture(i + 1, j + 1, c, currentState)) {
       if (i + 1 == 7) {
         toLocations.push_back({{i, j}, {i + 1, j + 1}, Pieces::wQueen});
         toLocations.push_back({{i, j}, {i + 1, j + 1}, Pieces::wRook});
@@ -356,7 +378,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
         toLocations.push_back({{i, j}, {i + 1, j + 1}});
       }
     }
-    if (canPawnCapture(i + 1, j - 1, c)) {
+    if (canPawnCapture(i + 1, j - 1, c, currentState)) {
       if (i == 7) {
         toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wQueen});
         toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wRook});
@@ -366,7 +388,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
         toLocations.push_back({{i, j}, {i + 1, j - 1}});
       }
     }
-    if (canPawnEnpassant(i + 1, j - 1, c)) {
+    if (canPawnEnpassant(i + 1, j - 1, c, currentState)) {
       toLocations.push_back({{i, j},
                              {i + 1, j - 1},
                              Pieces::empty,
@@ -375,7 +397,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
                              {-1, -1},
                              true});
     }
-    if (canPawnEnpassant(i + 1, j + 1, c)) {
+    if (canPawnEnpassant(i + 1, j + 1, c, currentState)) {
       toLocations.push_back({{i, j},
                              {i + 1, j + 1},
                              Pieces::empty,
@@ -386,7 +408,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
     }
   }
   if (c == Colours::black) {
-    if (canPawnLand(i - 1, j, c)) {
+    if (canPawnLand(i - 1, j, c, currentState)) {
       if (i - 1 == 0) {
         toLocations.push_back({{i, j}, {i - 1, j}, Pieces::bQueen});
         toLocations.push_back({{i, j}, {i - 1, j}, Pieces::bRook});
@@ -396,13 +418,13 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
         toLocations.push_back({{i, j}, {i - 1, j}});
       }
       if (i == 6) {
-        if (canPawnLand(i - 2, j, c)) {
+        if (canPawnLand(i - 2, j, c, currentState)) {
           toLocations.push_back(
               {{i, j}, {i - 2, j}, Pieces::empty, false, true, {i - 1, j}});
         }
       }
     }
-    if (canPawnCapture(i - 1, j - 1, c)) {
+    if (canPawnCapture(i - 1, j - 1, c, currentState)) {
       if (i - 1 == 0) {
         toLocations.push_back({{i, j}, {i - 1, j - 1}, Pieces::bQueen});
         toLocations.push_back({{i, j}, {i - 1, j - 1}, Pieces::bRook});
@@ -412,7 +434,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
         toLocations.push_back({{i, j}, {i - 1, j - 1}});
       }
     }
-    if (canPawnCapture(i - 1, j + 1, c)) {
+    if (canPawnCapture(i - 1, j + 1, c, currentState)) {
       if (i - 1 == 0) {
         toLocations.push_back({{i, j}, {i - 1, j + 1}, Pieces::bQueen});
         toLocations.push_back({{i, j}, {i - 1, j + 1}, Pieces::bRook});
@@ -422,7 +444,8 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
         toLocations.push_back({{i, j}, {i - 1, j + 1}});
       }
     }
-    if (canPawnEnpassant(i - 1, j - 1, c)) {
+
+    if (canPawnEnpassant(i - 1, j - 1, c, currentState)) {
       toLocations.push_back({{i, j},
                              {i - 1, j - 1},
                              Pieces::empty,
@@ -431,7 +454,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
                              {-1, -1},
                              true});
     }
-    if (canPawnEnpassant(i - 1, j + 1, c)) {
+    if (canPawnEnpassant(i - 1, j + 1, c, currentState)) {
       toLocations.push_back({{i, j},
                              {i - 1, j + 1},
                              Pieces::empty,
@@ -444,76 +467,78 @@ vector<Turn> pawnToLocations(int i, int j, Colours c) {
   return toLocations;
 }
 
-vector<Turn> knightToLocations(int i, int j, Colours c) {
+vector<Turn> knightToLocations(int i, int j, Colours c,
+                               gameState currentState) {
   vector<Turn> toLocations;
-  if (canLand(i + 2, j + 1, c)) {
+  if (canLand(i + 2, j + 1, c, currentState)) {
     toLocations.push_back({{i, j}, {i + 2, j + 1}});
   }
-  if (canLand(i + 2, j - 1, c)) {
+  if (canLand(i + 2, j - 1, c, currentState)) {
     toLocations.push_back({{i, j}, {i + 2, j - 1}});
   }
-  if (canLand(i + 1, j + 2, c)) {
+  if (canLand(i + 1, j + 2, c, currentState)) {
     toLocations.push_back({{i, j}, {i + 1, j + 2}});
   }
-  if (canLand(i + 1, j - 2, c)) {
+  if (canLand(i + 1, j - 2, c, currentState)) {
     toLocations.push_back({{i, j}, {i + 1, j - 2}});
   }
-  if (canLand(i - 2, j + 1, c)) {
+  if (canLand(i - 2, j + 1, c, currentState)) {
     toLocations.push_back({{i, j}, {i - 2, j + 1}});
   }
-  if (canLand(i - 2, j - 1, c)) {
+  if (canLand(i - 2, j - 1, c, currentState)) {
     toLocations.push_back({{i, j}, {i - 2, j - 1}});
   }
-  if (canLand(i - 1, j + 2, c)) {
+  if (canLand(i - 1, j + 2, c, currentState)) {
     toLocations.push_back({{i, j}, {i - 1, j + 2}});
   }
-  if (canLand(i - 1, j - 2, c)) {
+  if (canLand(i - 1, j - 2, c, currentState)) {
     toLocations.push_back({{i, j}, {i - 1, j - 2}});
   }
 
   return toLocations;
 }
 
-vector<Turn> bishopToLocations(int i, int j, Colours c) {
+vector<Turn> bishopToLocations(int i, int j, Colours c,
+                               gameState currentState) {
   vector<Turn> toLocations;
 
   for (int k = 1; (i + k <= 7 && j + k <= 7); k++) {
-    if (canLand(i + k, j + k, c)) {
+    if (canLand(i + k, j + k, c, currentState)) {
       toLocations.push_back({{i, j}, {i + k, j + k}});
     } else {
       break;
     }
-    if (canCapture(i + k, j + k, c)) {
+    if (canCapture(i + k, j + k, c, currentState)) {
       break;
     }
   }
   for (int k = 1; (i - k >= 0 && j + k <= 7); k++) {
-    if (canLand(i - k, j + k, c)) {
+    if (canLand(i - k, j + k, c, currentState)) {
       toLocations.push_back({{i, j}, {i - k, j + k}});
     } else {
       break;
     }
-    if (canCapture(i - k, j + k, c)) {
+    if (canCapture(i - k, j + k, c, currentState)) {
       break;
     }
   }
   for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
-    if (canLand(i - k, j - k, c)) {
+    if (canLand(i - k, j - k, c, currentState)) {
       toLocations.push_back({{i, j}, {i - k, j - k}});
     } else {
       break;
     }
-    if (canCapture(i - k, j - k, c)) {
+    if (canCapture(i - k, j - k, c, currentState)) {
       break;
     }
   }
   for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
-    if (canLand(i + k, j - k, c)) {
+    if (canLand(i + k, j - k, c, currentState)) {
       toLocations.push_back({{i, j}, {i + k, j - k}});
     } else {
       break;
     }
-    if (canCapture(i + k, j - k, c)) {
+    if (canCapture(i + k, j - k, c, currentState)) {
       break;
     }
   }
@@ -521,130 +546,130 @@ vector<Turn> bishopToLocations(int i, int j, Colours c) {
   return toLocations;
 }
 
-vector<Turn> rookToLocations(int i, int j, Colours c) {
+vector<Turn> rookToLocations(int i, int j, Colours c, gameState currentState) {
   vector<Turn> toLocations;
 
   for (int k = i + 1; k < 8; k++) {
-    if (canLand(k, j, c)) {
+    if (canLand(k, j, c, currentState)) {
       toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
-    if (canCapture(k, j, c)) {
+    if (canCapture(k, j, c, currentState)) {
       break;
     }
   }
   for (int k = i - 1; k >= 0; k--) {
-    if (canLand(k, j, c)) {
+    if (canLand(k, j, c, currentState)) {
       toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
-    if (canCapture(k, j, c)) {
+    if (canCapture(k, j, c, currentState)) {
       break;
     }
   }
   for (int k = j - 1; k >= 0; k--) {
-    if (canLand(i, k, c)) {
+    if (canLand(i, k, c, currentState)) {
       toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
-    if (canCapture(i, k, c)) {
+    if (canCapture(i, k, c, currentState)) {
       break;
     }
   }
   for (int k = j + 1; k < 8; k++) {
-    if (canLand(i, k, c)) {
+    if (canLand(i, k, c, currentState)) {
       toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
-    if (canCapture(i, k, c)) {
+    if (canCapture(i, k, c, currentState)) {
       break;
     }
   }
   return toLocations;
 }
-vector<Turn> queenToLocations(int i, int j, Colours c) {
+vector<Turn> queenToLocations(int i, int j, Colours c, gameState currentState) {
   vector<Turn> toLocations;
   for (int k = i + 1; k < 8; k++) {
-    if (canLand(k, j, c)) {
+    if (canLand(k, j, c, currentState)) {
       toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
-    if (canCapture(k, j, c)) {
+    if (canCapture(k, j, c, currentState)) {
       break;
     }
   }
   for (int k = i - 1; k >= 0; k--) {
-    if (canLand(k, j, c)) {
+    if (canLand(k, j, c, currentState)) {
       toLocations.push_back({{i, j}, {k, j}});
     } else {
       break;
     }
-    if (canCapture(k, j, c)) {
+    if (canCapture(k, j, c, currentState)) {
       break;
     }
   }
   for (int k = j - 1; k >= 0; k--) {
-    if (canLand(i, k, c)) {
+    if (canLand(i, k, c, currentState)) {
       toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
-    if (canCapture(i, k, c)) {
+    if (canCapture(i, k, c, currentState)) {
       break;
     }
   }
   for (int k = j + 1; k < 8; k++) {
-    if (canLand(i, k, c)) {
+    if (canLand(i, k, c, currentState)) {
       toLocations.push_back({{i, j}, {i, k}});
     } else {
       break;
     }
-    if (canCapture(i, k, c)) {
+    if (canCapture(i, k, c, currentState)) {
       break;
     }
   }
   for (int k = 1; (k + i < 7 && k + j < 7); k++) {
-    if (canLand(i + k, j + k, c)) {
+    if (canLand(i + k, j + k, c, currentState)) {
       toLocations.push_back({{i, j}, {k + i, k + j}});
     } else {
       break;
     }
-    if (canCapture(i + k, j + k, c)) {
+    if (canCapture(i + k, j + k, c, currentState)) {
       break;
     }
   }
   for (int k = 1; (i - k >= 0 && k + j < 7); k++) {
-    if (canLand(i - k, j + k, c)) {
+    if (canLand(i - k, j + k, c, currentState)) {
       toLocations.push_back({{i, j}, {i - k, k + j}});
     } else {
       break;
     }
-    if (canCapture(i - k, j + k, c)) {
+    if (canCapture(i - k, j + k, c, currentState)) {
       break;
     }
   }
   for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
-    if (canLand(i - k, j - k, c)) {
+    if (canLand(i - k, j - k, c, currentState)) {
       toLocations.push_back({{i, j}, {i - k, j - k}});
     } else {
       break;
     }
-    if (canCapture(i - k, j - k, c)) {
+    if (canCapture(i - k, j - k, c, currentState)) {
       break;
     }
   }
   for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
-    if (canLand(i + k, j - k, c)) {
+    if (canLand(i + k, j - k, c, currentState)) {
       toLocations.push_back({{i, j}, {i + k, j - k}});
     } else {
       break;
     }
-    if (canCapture(i + k, j - k, c)) {
+    if (canCapture(i + k, j - k, c, currentState)) {
       break;
     }
   }
@@ -652,7 +677,7 @@ vector<Turn> queenToLocations(int i, int j, Colours c) {
   return toLocations;
 }
 
-bool canCaptureAPawn(int i, int j, Colours c) {
+bool canCaptureAPawn(int i, int j, Colours c, gameState currentState) {
   if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
     if (c == Colours::white) {
       return currentState.board[i][j] == Pieces::bPawn;
@@ -662,7 +687,7 @@ bool canCaptureAPawn(int i, int j, Colours c) {
   return false;
 }
 
-bool canCaptureAKnight(int i, int j, Colours c) {
+bool canCaptureAKnight(int i, int j, Colours c, gameState currentState) {
   if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
     if (c == Colours::white) {
       return currentState.board[i][j] == Pieces::bKnight;
@@ -672,7 +697,7 @@ bool canCaptureAKnight(int i, int j, Colours c) {
   return false;
 }
 
-bool canCaptureARookOrQueen(int i, int j, Colours c) {
+bool canCaptureARookOrQueen(int i, int j, Colours c, gameState currentState) {
   if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
     if (c == Colours::white) {
       return (currentState.board[i][j] == Pieces::bRook) ||
@@ -685,7 +710,7 @@ bool canCaptureARookOrQueen(int i, int j, Colours c) {
   return false;
 }
 
-bool canCaptureABishopOrQueen(int i, int j, Colours c) {
+bool canCaptureABishopOrQueen(int i, int j, Colours c, gameState currentState) {
   if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
     if (c == Colours::white) {
       return (currentState.board[i][j] == Pieces::bBishop) ||
@@ -698,114 +723,116 @@ bool canCaptureABishopOrQueen(int i, int j, Colours c) {
   return false;
 }
 
-bool pawnCaptures(int i, int j, Colours c) {
+bool pawnCaptures(int i, int j, Colours c, gameState currentState) {
   if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
     if (Colours::white == c) {
-      return canCaptureAPawn(i + 1, j + 1, c) ||
-             canCaptureAPawn(i + 1, j - 1, c);
+      return canCaptureAPawn(i + 1, j + 1, c, currentState) ||
+             canCaptureAPawn(i + 1, j - 1, c, currentState);
     }
-    return canCaptureAPawn(i - 1, j + 1, c) || canCaptureAPawn(i - 1, j - 1, c);
+    return canCaptureAPawn(i - 1, j + 1, c, currentState) ||
+           canCaptureAPawn(i - 1, j - 1, c, currentState);
   }
   return false;
 }
 
-bool knightCaptures(int i, int j, Colours c) {
-  return (canCaptureAKnight(i + 1, j + 2, c) ||
-          canCaptureAKnight(i + 1, j - 2, c) ||
-          canCaptureAKnight(i + 2, j + 1, c) ||
-          canCaptureAKnight(i + 2, j - 1, c) ||
-          canCaptureAKnight(i - 1, j + 2, c) ||
-          canCaptureAKnight(i - 1, j - 2, c) ||
-          canCaptureAKnight(i - 2, j + 1, c) ||
-          canCaptureAKnight(i - 2, j - 1, c));
+bool knightCaptures(int i, int j, Colours c, gameState currentState) {
+  return (canCaptureAKnight(i + 1, j + 2, c, currentState) ||
+          canCaptureAKnight(i + 1, j - 2, c, currentState) ||
+          canCaptureAKnight(i + 2, j + 1, c, currentState) ||
+          canCaptureAKnight(i + 2, j - 1, c, currentState) ||
+          canCaptureAKnight(i - 1, j + 2, c, currentState) ||
+          canCaptureAKnight(i - 1, j - 2, c, currentState) ||
+          canCaptureAKnight(i - 2, j + 1, c, currentState) ||
+          canCaptureAKnight(i - 2, j - 1, c, currentState));
 }
 
-bool rookOrQueenCaptures(int i, int j, Colours c) {
+bool rookOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
   for (int k = i + 1; k < 8; k++) {
-    if (!canLand(k, j, c)) {
+    if (!canLand(k, j, c, currentState)) {
       break;
-    } else if (canCaptureARookOrQueen(k, j, c)) {
+    } else if (canCaptureARookOrQueen(k, j, c, currentState)) {
       return true;
     }
   }
   for (int k = i - 1; k < 8; k--) {
-    if (!canLand(k, j, c)) {
+    if (!canLand(k, j, c, currentState)) {
       break;
-    } else if (canCaptureARookOrQueen(k, j, c)) {
+    } else if (canCaptureARookOrQueen(k, j, c, currentState)) {
       return true;
     }
   }
   for (int k = j - 1; k < 8; k--) {
-    if (!canLand(k, j, c)) {
+    if (!canLand(k, j, c, currentState)) {
       break;
-    } else if (canCaptureARookOrQueen(i, k, c)) {
+    } else if (canCaptureARookOrQueen(i, k, c, currentState)) {
       return true;
     }
   }
   for (int k = j + 1; k < 8; k++) {
-    if (!canLand(k, j, c)) {
+    if (!canLand(k, j, c, currentState)) {
       break;
-    } else if (canCaptureARookOrQueen(i, k, c)) {
+    } else if (canCaptureARookOrQueen(i, k, c, currentState)) {
       return true;
     }
   }
   return false;
 }
 
-bool bishopOrQueenCaptures(int i, int j, Colours c) {
+bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
   for (int k = 1; (i + k <= 7 && j + k <= 7); k++) {
-    if (!canLand(i + k, j + k, c)) {
+    if (!canLand(i + k, j + k, c, currentState)) {
       break;
     }
-    if (canCaptureABishopOrQueen(i + k, j + k, c)) {
+    if (canCaptureABishopOrQueen(i + k, j + k, c, currentState)) {
       return true;
     }
   }
   for (int k = 1; (i - k >= 0 && j + k <= 7); k++) {
-    if (!canLand(i - k, j + k, c)) {
+    if (!canLand(i - k, j + k, c, currentState)) {
       break;
     }
-    if (canCapture(i - k, j + k, c)) {
+    if (canCapture(i - k, j + k, c, currentState)) {
       return true;
     }
   }
   for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
-    if (!canLand(i - k, j - k, c)) {
+    if (!canLand(i - k, j - k, c, currentState)) {
       break;
     }
-    if (canCapture(i - k, j - k, c)) {
+    if (canCapture(i - k, j - k, c, currentState)) {
       return true;
     }
   }
   for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
-    if (canLand(i + k, j - k, c)) {
+    if (canLand(i + k, j - k, c, currentState)) {
+      return true;
     } else {
       break;
     }
-    if (canCapture(i + k, j - k, c)) {
+    if (canCapture(i + k, j - k, c, currentState)) {
       break;
     }
   }
   return false;
 }
 
-bool isInCheck(int i, int j, Colours currentColour) {
-  if (pawnCaptures(i, j, currentColour)) {
+bool isInCheck(int i, int j, Colours currentColour, gameState currentState) {
+  if (pawnCaptures(i, j, currentColour, currentState)) {
     return true;
   }
-  if (knightCaptures(i, j, currentColour)) {
+  if (knightCaptures(i, j, currentColour, currentState)) {
     return true;
   }
-  if (rookOrQueenCaptures(i, j, currentColour)) {
+  if (rookOrQueenCaptures(i, j, currentColour, currentState)) {
     return true;
   }
-  if (bishopOrQueenCaptures(i, j, currentColour)) {
+  if (bishopOrQueenCaptures(i, j, currentColour, currentState)) {
     return true;
   }
   return false;
 }
 
-vector<Turn> getCastlingTurns(Colours c) {
+vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
   vector<Turn> toLocations;
 
   if (c == Colours::white) {
@@ -813,14 +840,18 @@ vector<Turn> getCastlingTurns(Colours c) {
       if (currentState.board[0][1] == Pieces::empty &&
           currentState.board[0][2] == Pieces::empty &&
           currentState.board[0][3] == Pieces::empty) {
-        if (!isInCheck(0, 2, c) && !isInCheck(0, 3, c) && !isInCheck(0, 1, c) &&
-            !isInCheck(0, 4, c)) {
+        if (!isInCheck(0, 2, c, currentState) &&
+            !isInCheck(0, 3, c, currentState) &&
+            !isInCheck(0, 1, c, currentState) &&
+            !isInCheck(0, 4, c, currentState)) {
           toLocations.push_back({{0, 4}, {0, 2}, Pieces::empty, true});
         }
       }
       if (currentState.board[0][5] == Pieces::empty &&
           currentState.board[0][6] == Pieces::empty) {
-        if (!isInCheck(0, 5, c) && !isInCheck(0, 6, c) && !isInCheck(0, 4, c)) {
+        if (!isInCheck(0, 5, c, currentState) &&
+            !isInCheck(0, 6, c, currentState) &&
+            !isInCheck(0, 4, c, currentState)) {
           toLocations.push_back({{0, 4}, {0, 6}, Pieces::empty, true});
         }
       }
@@ -830,14 +861,18 @@ vector<Turn> getCastlingTurns(Colours c) {
       if (currentState.board[7][1] == Pieces::empty &&
           currentState.board[7][2] == Pieces::empty &&
           currentState.board[7][3] == Pieces::empty) {
-        if (!isInCheck(7, 2, c) && !isInCheck(7, 3, c) && !isInCheck(7, 1, c) &&
-            !isInCheck(7, 4, c)) {
+        if (!isInCheck(7, 2, c, currentState) &&
+            !isInCheck(7, 3, c, currentState) &&
+            !isInCheck(7, 1, c, currentState) &&
+            !isInCheck(7, 4, c, currentState)) {
           toLocations.push_back({{7, 4}, {7, 2}, Pieces::empty, true});
         }
       }
       if (currentState.board[7][5] == Pieces::empty &&
           currentState.board[7][6] == Pieces::empty) {
-        if (!isInCheck(7, 5, c) && !isInCheck(7, 6, c) && !isInCheck(7, 4, c)) {
+        if (!isInCheck(7, 5, c, currentState) &&
+            !isInCheck(7, 6, c, currentState) &&
+            !isInCheck(7, 4, c, currentState)) {
           toLocations.push_back({{7, 4}, {7, 6}, Pieces::empty, true});
         }
       }
@@ -846,91 +881,117 @@ vector<Turn> getCastlingTurns(Colours c) {
   return toLocations;
 }
 
-vector<Turn> getPseudoCorrect(Colours colour) {
+vector<Turn> getPseudoCorrect(Colours colour, gameState currentState) {
   vector<Turn> toLocations;
   for (int i = 0; i < 8; i++) {
     for (int j = 0; j < 8; j++) {
-      if (isEmpty(i, j) || (colour == Colours::white && !isWhite(i, j)) ||
-          (colour == Colours::black && !isBlack(i, j))) {
+      if (isEmpty(i, j, currentState) ||
+          (colour == Colours::white && !isWhite(i, j, currentState)) ||
+          (colour == Colours::black && !isBlack(i, j, currentState))) {
         continue;
       }
-      if (isPawn(i, j)) {
-        auto pawnLocations = pawnToLocations(i, j, colour);
+      if (isPawn(i, j, currentState)) {
+        auto pawnLocations = pawnToLocations(i, j, colour, currentState);
         toLocations.insert(toLocations.end(), pawnLocations.begin(),
                            pawnLocations.end());
       }
-      if (isKnight(i, j)) {
-        auto knightLocations = knightToLocations(i, j, colour);
+      if (isKnight(i, j, currentState)) {
+        auto knightLocations = knightToLocations(i, j, colour, currentState);
         toLocations.insert(toLocations.end(), knightLocations.begin(),
                            knightLocations.end());
       }
-      if (isBishop(i, j)) {
-        auto bishopLocations = bishopToLocations(i, j, colour);
+      if (isBishop(i, j, currentState)) {
+        auto bishopLocations = bishopToLocations(i, j, colour, currentState);
         toLocations.insert(toLocations.end(), bishopLocations.begin(),
                            bishopLocations.end());
       }
-      if (isRook(i, j)) {
-        auto rookLocations = rookToLocations(i, j, colour);
+      if (isRook(i, j, currentState)) {
+        auto rookLocations = rookToLocations(i, j, colour, currentState);
         toLocations.insert(toLocations.end(), rookLocations.begin(),
                            rookLocations.end());
       }
-      if (isQueen(i, j)) {
-        auto queenLocations = queenToLocations(i, j, colour);
+      if (isQueen(i, j, currentState)) {
+        auto queenLocations = queenToLocations(i, j, colour, currentState);
         toLocations.insert(toLocations.end(), queenLocations.begin(),
                            queenLocations.end());
       }
-      if (isKing(i, j)) {
-        auto kingLocations = kingToLocations(i, j, colour);
+      if (isKing(i, j, currentState)) {
+        auto kingLocations = kingToLocations(i, j, colour, currentState);
         toLocations.insert(toLocations.end(), kingLocations.begin(),
                            kingLocations.end());
       }
     }
   }
-  auto castlingTurns = getCastlingTurns(colour);
+  auto castlingTurns = getCastlingTurns(colour, currentState);
   toLocations.insert(toLocations.end(), castlingTurns.begin(),
                      castlingTurns.end());
   return toLocations;
 }
 
-void applyTurn(Turn turn) {
+void applyTurn(Turn turn, gameState& currentStat) {
   Pieces piece = (turn.promotionPiece == Pieces::empty)
-                     ? (currentState.board[turn.from.first][turn.from.second])
+                     ? (currentStat.board[turn.from.first][turn.from.second])
                      : turn.promotionPiece;
   int i = turn.to.first, j = turn.to.second;
-  currentState.board[turn.to.first][turn.to.second] = piece;
-  currentState.board[turn.from.first][turn.from.second] = Pieces::empty;
-  currentState.canEnpassant = turn.isEnpassantInitiater;
-  currentState.enpassantSq = turn.enpassantSquare;
+  currentStat.board[turn.to.first][turn.to.second] = piece;
+  currentStat.board[turn.from.first][turn.from.second] = Pieces::empty;
+  currentStat.canEnpassant = turn.isEnpassantInitiater;
+  currentStat.enpassantSq = turn.enpassantSquare;
   if (turn.isEnpassantFinisher) {
-    if (isWhite(turn.to.first, turn.to.second)) {
-      currentState.board[i - 1][j] = Pieces::empty;
+    if (isWhite(turn.to.first, turn.to.second, currentStat)) {
+      currentStat.board[i - 1][j] = Pieces::empty;
     } else {
-      currentState.board[i + 1][j] = Pieces::empty;
+      currentStat.board[i + 1][j] = Pieces::empty;
     }
   }
   if (turn.castling) {
     if (j == 2) {
-      currentState.board[i][3] = currentState.board[i][0];
-      currentState.board[i][0] = Pieces::empty;
+      currentStat.board[i][3] = currentStat.board[i][0];
+      currentStat.board[i][0] = Pieces::empty;
     }
     if (j == 6) {
-      currentState.board[i][5] = currentState.board[i][7];
-      currentState.board[i][7] = Pieces::empty;
+      currentStat.board[i][5] = currentStat.board[i][7];
+      currentStat.board[i][7] = Pieces::empty;
     }
+    if (currentStat.currentColour == Colours::white)
+      currentStat.wCastle = false;
+    else {
+      currentStat.bCastle = false;
+    }
+  }
+  if (currentStat.currentColour == Colours::white) {
+    currentStat.currentColour = Colours::black;
+  } else {
+    currentStat.currentColour = Colours::white;
   }
 }
 
-vector<Turn> generateTurns(Colours c) {
+vector<Turn> generateTurns(gameState& currentStat) {
+  Colours c = currentStat.currentColour;
   vector<Turn> turns;
-  for (auto& turn : getPseudoCorrect(c)) {
-    gameState originalState = currentState;
-    applyTurn(turn);
+  for (auto& turn : getPseudoCorrect(c, currentStat)) {
+    gameState originalState = currentStat;
+    applyTurn(turn, currentStat);
     Pieces king = c == Colours::white ? Pieces::wKing : Pieces::bKing;
-    Square kingLocation = getPieceLocation(king);
-    if (!isInCheck(kingLocation.first, kingLocation.second, c)) {
+    Square kingLocation = getPieceLocation(king, currentStat);
+    if (!isInCheck(kingLocation.first, kingLocation.second, c, currentStat)) {
       turns.push_back(turn);
     }
-    currentState = originalState;
+    currentStat = originalState;
   }
   return turns;
+}
+uint64_t perft(gameState& currentState, int depth) {
+  if (depth == 0) {
+    return 1;
+  }
+  uint64_t count = 0;
+  const auto& turns = generateTurns(currentState);
+  for (const auto& turn : turns) {
+    gameState origState = currentState;
+    applyTurn(turn, currentState);
+    count += perft(currentState, depth - 1);
+    currentState = origState;
+  }
+  return count;
 }
