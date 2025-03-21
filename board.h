@@ -839,7 +839,7 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
     if (!canLand(i - k, j + k, c, currentState)) {
       break;
     }
-    if (canCapture(i - k, j + k, c, currentState)) {
+    if (canCaptureABishopOrQueen(i - k, j + k, c, currentState)) {
       cout << "-------bishop or queen captures from " << i - k << " " << j + k
            << "\n";
       return true;
@@ -849,10 +849,9 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
     if (!canLand(i - k, j - k, c, currentState)) {
       break;
     }
-    if (canCapture(i - k, j - k, c, currentState)) {
-      // cout << "--------bishop or queen captures from " << i - k << " " << j -
-      // k
-      //      << "\n";
+    if (canCaptureABishopOrQueen(i - k, j - k, c, currentState)) {
+      cout << "--------bishop or queen captures from " << i - k << " " << j - k
+           << "\n";
       return true;
     }
   }
@@ -861,9 +860,8 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
     } else {
       break;
     }
-    if (canCapture(i + k, j - k, c, currentState)) {
-      // cout << "bishop or queen captures from " << i + k << " " << j - k <<
-      // "\n";
+    if (canCaptureABishopOrQueen(i + k, j - k, c, currentState)) {
+      cout << "bishop or queen captures from " << i + k << " " << j - k << "\n";
       return true;
     }
   }
@@ -872,19 +870,19 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
 
 bool isInCheck(int i, int j, Colours currentColour, gameState currentState) {
   if (pawnCaptures(i, j, currentColour, currentState)) {
-    // cout << "pawn captures\n";
+    cout << "pawn captures\n";
     return true;
   }
   if (knightCaptures(i, j, currentColour, currentState)) {
     return true;
-    // cout << "knight captures\n";
+    cout << "knight captures\n";
   }
   if (rookOrQueenCaptures(i, j, currentColour, currentState)) {
-    // cout << "rook or queen captures\n";
+    cout << "rook or queen captures\n";
     return true;
   }
   if (bishopOrQueenCaptures(i, j, currentColour, currentState)) {
-    // cout << "bishop  or queen captures\n";
+    cout << "bishop  or queen captures\n";
     return true;
   }
   return false;
