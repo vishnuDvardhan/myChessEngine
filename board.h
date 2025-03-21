@@ -75,16 +75,46 @@ struct gameState {
   };
 
   void printBoard() {
-    for (int i = 7; i >= 0; i--) {
-      for (int j = 0; j < 8; j++) {
-        cout << pieceTable[static_cast<int>(board[i][j])] << " ";
-        // outFile << pieceTable[static_cast<int>(board[i][j])] << " ";
-      }
-      cout << "\n";
-      // outFile << "\n";
+    std::cout << "    ";
+    for (int col = 0; col < 8; col++) {
+      std::cout << col << " ";
     }
-    cout << "\n";
-    // outFile << "\n";
+    std::cout << "\n\n";
+
+    // Print rows from bottom (0) to top (7)
+    for (int i = 0; i < 8; i++) {
+      // Label each row on the left
+      std::cout << " " << i << "  ";
+      // Print the row contents from left to right
+      for (int j = 0; j < 8; j++) {
+        std::cout << pieceTable[static_cast<int>(board[i][j])] << " ";
+      }
+      std::cout << "\n";
+    }
+    std::cout << "\n";
+    string currentColourString =
+        (currentColour == Colours::white) ? "white" : "black";
+    cout << "current colour is " << currentColourString << endl;
+  }
+
+  void printBoardDebug() {
+    outFile << "    ";
+    for (int col = 0; col < 8; col++) {
+      outFile << col << " ";
+    }
+    outFile << "\n\n";
+
+    // Print rows from bottom (0) to top (7)
+    for (int i = 0; i < 8; i++) {
+      // Label each row on the left
+      outFile << " " << i << "  ";
+      // Print the row contents from left to right
+      for (int j = 0; j < 8; j++) {
+        outFile << pieceTable[static_cast<int>(board[i][j])] << " ";
+      }
+      outFile << "\n";
+    }
+    outFile << "\n";
   }
 };
 
@@ -169,16 +199,32 @@ struct Turn {
 
   std::string str() const {
     std::ostringstream os;
-    os << "\n{{" << from.first << ", " << from.second << "}, "
-       << "{" << to.first << ", " << to.second << "}, "
-       << "Pieces::" << (pieceToString(promotionPiece)) << ", "
-       << (castling ? "true" : "false") << ", "
-       << (isEnpassantInitiater ? "true" : "false") << ", "
-       << "{" << enpassantSquare.first << ", " << enpassantSquare.second
-       << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
-
+    os << " { "
+       << "from=(" << from.first << ", " << from.second << "), "
+       << "to=(" << to.first << ", " << to.second << "), "
+       << "promotionPiece=Pieces::" << pieceToString(promotionPiece) << ", "
+       << "castling=" << (castling ? "true" : "false") << ", "
+       << "isEnpassantInitiater=" << (isEnpassantInitiater ? "true" : "false")
+       << ", "
+       << "enpassantSquare=(" << enpassantSquare.first << ", "
+       << enpassantSquare.second << "), "
+       << "isEnpassantFinisher=" << (isEnpassantFinisher ? "true" : "false")
+       << " }\n";
     return os.str();
   }
+
+  // std::string str() const {
+  //   std::ostringstream os;
+  //   os << "\n{{" << from.first << ", " << from.second << "}, "
+  //      << "{" << to.first << ", " << to.second << "}, "
+  //      << "Pieces::" << (pieceToString(promotionPiece)) << ", "
+  //      << (castling ? "true" : "false") << ", "
+  //      << (isEnpassantInitiater ? "true" : "false") << ", "
+  //      << "{" << enpassantSquare.first << ", " << enpassantSquare.second
+  //      << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
+
+  //   return os.str();
+  // }
 
   friend std::ostream& operator<<(std::ostream& os, const Turn& turn) {
     os << turn.str();
@@ -784,6 +830,8 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
       break;
     }
     if (canCaptureABishopOrQueen(i + k, j + k, c, currentState)) {
+      cout << "-------bishop or queen captures from " << i + k << " " << j + k
+           << "\n";
       return true;
     }
   }
@@ -792,6 +840,8 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
       break;
     }
     if (canCapture(i - k, j + k, c, currentState)) {
+      cout << "-------bishop or queen captures from " << i - k << " " << j + k
+           << "\n";
       return true;
     }
   }
@@ -800,17 +850,21 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
       break;
     }
     if (canCapture(i - k, j - k, c, currentState)) {
+      // cout << "--------bishop or queen captures from " << i - k << " " << j -
+      // k
+      //      << "\n";
       return true;
     }
   }
   for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
     if (canLand(i + k, j - k, c, currentState)) {
-      return true;
     } else {
       break;
     }
     if (canCapture(i + k, j - k, c, currentState)) {
-      break;
+      // cout << "bishop or queen captures from " << i + k << " " << j - k <<
+      // "\n";
+      return true;
     }
   }
   return false;
@@ -818,15 +872,19 @@ bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
 
 bool isInCheck(int i, int j, Colours currentColour, gameState currentState) {
   if (pawnCaptures(i, j, currentColour, currentState)) {
+    // cout << "pawn captures\n";
     return true;
   }
   if (knightCaptures(i, j, currentColour, currentState)) {
     return true;
+    // cout << "knight captures\n";
   }
   if (rookOrQueenCaptures(i, j, currentColour, currentState)) {
+    // cout << "rook or queen captures\n";
     return true;
   }
   if (bishopOrQueenCaptures(i, j, currentColour, currentState)) {
+    // cout << "bishop  or queen captures\n";
     return true;
   }
   return false;
@@ -891,7 +949,15 @@ vector<Turn> getPseudoCorrect(Colours colour, gameState currentState) {
         continue;
       }
       if (isPawn(i, j, currentState)) {
+        // cout << "pawn\n";
+        // cout << i << " " << j << "\n";
         auto pawnLocations = pawnToLocations(i, j, colour, currentState);
+        // // cout << pawnLocations << "\n";
+        // for (auto& loc : pawnLocations) {
+        //   cout << loc.from.first << " " << loc.from.second << " "
+        //        << loc.to.first << " " << loc.to.second << "-\n";
+        // }
+        // cout << "----\n";
         toLocations.insert(toLocations.end(), pawnLocations.begin(),
                            pawnLocations.end());
       }
@@ -969,20 +1035,31 @@ void applyTurn(Turn turn, gameState& currentStat) {
 vector<Turn> generateTurns(gameState& currentStat) {
   Colours c = currentStat.currentColour;
   vector<Turn> turns;
+  // cout << "in generate turns\n";
+  // cout << "interating generated pseudo correct turns\n";
   for (auto& turn : getPseudoCorrect(c, currentStat)) {
+    // cout << turn;
+
     gameState originalState = currentStat;
     applyTurn(turn, currentStat);
     Pieces king = c == Colours::white ? Pieces::wKing : Pieces::bKing;
     Square kingLocation = getPieceLocation(king, currentStat);
     if (!isInCheck(kingLocation.first, kingLocation.second, c, currentStat)) {
       turns.push_back(turn);
+    } else {
+      cout << "king is in check\n";
     }
     currentStat = originalState;
   }
+  // cout << "returning turns\n";
+  // for (auto& turn : turns) {
+  //   cout << turn;
+  // }
   return turns;
 }
 uint64_t perft(gameState& currentState, int depth) {
   if (depth == 0) {
+    currentState.printBoardDebug();
     return 1;
   }
   uint64_t count = 0;
@@ -994,4 +1071,15 @@ uint64_t perft(gameState& currentState, int depth) {
     currentState = origState;
   }
   return count;
+}
+
+void perftDebug(gameState& currentState, int depth) {
+  for (const auto& turn : generateTurns(currentState)) {
+    gameState origState = currentState;
+    applyTurn(turn, currentState);
+    uint64_t count = perft(currentState, depth - 1);
+    std::cout << turn << ":--" << count << "\n";
+
+    currentState = origState;
+  }
 }
