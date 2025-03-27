@@ -77,14 +77,14 @@ struct gameState {
   void printBoard() {
     std::cout << "    ";
     for (int col = 0; col < 8; col++) {
-      std::cout << col << " ";
+      std::cout << (char)(col + 97) << " ";
     }
     std::cout << "\n\n";
 
     // Print rows from bottom (0) to top (7)
-    for (int i = 0; i < 8; i++) {
+    for (int i = 7; i >= 0; i--) {
       // Label each row on the left
-      std::cout << " " << i << "  ";
+      std::cout << " " << i + 1 << "  ";
       // Print the row contents from left to right
       for (int j = 0; j < 8; j++) {
         std::cout << pieceTable[static_cast<int>(board[i][j])] << " ";
@@ -197,6 +197,16 @@ struct Turn {
            promotionPiece == other.promotionPiece;
   }
 
+  string numberToSquare() {
+    if (promotionPiece == Pieces::empty) {
+      return ((char)(from.second + 97) + to_string(from.first + 1) +
+              (char)(to.second + 97) + to_string(to.first + 1));
+    }
+    return ((char)(from.second + 97) + to_string(from.first + 1) +
+            (char)(to.second + 97) + to_string(to.first + 1)) +
+           pieceTable[(promotionPiece)];
+  }
+
   std::string str() const {
     std::ostringstream os;
     os << " { "
@@ -213,15 +223,16 @@ struct Turn {
     return os.str();
   }
 
-  // std::string str() const {
-  //   std::ostringstream os;
-  //   os << "\n{{" << from.first << ", " << from.second << "}, "
-  //      << "{" << to.first << ", " << to.second << "}, "
-  //      << "Pieces::" << (pieceToString(promotionPiece)) << ", "
-  //      << (castling ? "true" : "false") << ", "
-  //      << (isEnpassantInitiater ? "true" : "false") << ", "
-  //      << "{" << enpassantSquare.first << ", " << enpassantSquare.second
-  //      << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
+  // usefull for debugging
+  //  std::string str() const {
+  //    std::ostringstream os;
+  //    os << "\n{{" << from.first << ", " << from.second << "}, "
+  //       << "{" << to.first << ", " << to.second << "}, "
+  //       << "Pieces::" << (pieceToString(promotionPiece)) << ", "
+  //       << (castling ? "true" : "false") << ", "
+  //       << (isEnpassantInitiater ? "true" : "false") << ", "
+  //       << "{" << enpassantSquare.first << ", " << enpassantSquare.second
+  //       << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
 
   //   return os.str();
   // }
@@ -254,14 +265,14 @@ gameState initBoard() {
   currentState.board[0][7] = Pieces::wRook;
   currentState.board[7][0] = Pieces::bRook;
   currentState.board[7][7] = Pieces::bRook;
-  currentState.board[0][1] = Pieces::wBishop;
-  currentState.board[0][6] = Pieces::wBishop;
-  currentState.board[7][1] = Pieces::bBishop;
-  currentState.board[7][6] = Pieces::bBishop;
-  currentState.board[0][2] = Pieces::wKnight;
-  currentState.board[0][5] = Pieces::wKnight;
-  currentState.board[7][2] = Pieces::bKnight;
-  currentState.board[7][5] = Pieces::bKnight;
+  currentState.board[0][1] = Pieces::wKnight;
+  currentState.board[0][6] = Pieces::wKnight;
+  currentState.board[7][1] = Pieces::bKnight;
+  currentState.board[7][6] = Pieces::bKnight;
+  currentState.board[0][2] = Pieces::wBishop;
+  currentState.board[0][5] = Pieces::wBishop;
+  currentState.board[7][2] = Pieces::bBishop;
+  currentState.board[7][5] = Pieces::bBishop;
   currentState.board[0][3] = Pieces::wQueen;
   currentState.board[7][3] = Pieces::bQueen;
   currentState.board[0][4] = Pieces::wKing;
@@ -679,7 +690,7 @@ vector<Turn> queenToLocations(int i, int j, Colours c, gameState currentState) {
       break;
     }
   }
-  for (int k = 1; (k + i < 7 && k + j < 7); k++) {
+  for (int k = 1; (k + i <= 7 && k + j <= 7); k++) {
     if (canLand(i + k, j + k, c, currentState)) {
       toLocations.push_back({{i, j}, {k + i, k + j}});
     } else {
@@ -689,7 +700,7 @@ vector<Turn> queenToLocations(int i, int j, Colours c, gameState currentState) {
       break;
     }
   }
-  for (int k = 1; (i - k >= 0 && k + j < 7); k++) {
+  for (int k = 1; (i - k >= 0 && k + j <= 7); k++) {
     if (canLand(i - k, j + k, c, currentState)) {
       toLocations.push_back({{i, j}, {i - k, k + j}});
     } else {
@@ -709,7 +720,7 @@ vector<Turn> queenToLocations(int i, int j, Colours c, gameState currentState) {
       break;
     }
   }
-  for (int k = 1; (i + k < 7 && j - k >= 0); k++) {
+  for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
     if (canLand(i + k, j - k, c, currentState)) {
       toLocations.push_back({{i, j}, {i + k, j - k}});
     } else {
@@ -947,15 +958,7 @@ vector<Turn> getPseudoCorrect(Colours colour, gameState currentState) {
         continue;
       }
       if (isPawn(i, j, currentState)) {
-        // cout << "pawn\n";
-        // cout << i << " " << j << "\n";
         auto pawnLocations = pawnToLocations(i, j, colour, currentState);
-        // // cout << pawnLocations << "\n";
-        // for (auto& loc : pawnLocations) {
-        //   cout << loc.from.first << " " << loc.from.second << " "
-        //        << loc.to.first << " " << loc.to.second << "-\n";
-        // }
-        // cout << "----\n";
         toLocations.insert(toLocations.end(), pawnLocations.begin(),
                            pawnLocations.end());
       }
@@ -1033,11 +1036,8 @@ void applyTurn(Turn turn, gameState& currentStat) {
 vector<Turn> generateTurns(gameState& currentStat) {
   Colours c = currentStat.currentColour;
   vector<Turn> turns;
-  // cout << "in generate turns\n";
-  // cout << "interating generated pseudo correct turns\n";
-  for (auto& turn : getPseudoCorrect(c, currentStat)) {
-    // cout << turn;
 
+  for (auto& turn : getPseudoCorrect(c, currentStat)) {
     gameState originalState = currentStat;
     applyTurn(turn, currentStat);
     Pieces king = c == Colours::white ? Pieces::wKing : Pieces::bKing;
@@ -1049,34 +1049,42 @@ vector<Turn> generateTurns(gameState& currentStat) {
     }
     currentStat = originalState;
   }
-  // cout << "returning turns\n";
-  // for (auto& turn : turns) {
-  //   cout << turn;
-  // }
+
   return turns;
 }
+std::vector<Turn> movesSoFar;
+
 uint64_t perft(gameState& currentState, int depth) {
   if (depth == 0) {
+    outFile << "Leaf at depth=0. Sequence of moves:\n";
+    for (auto& m : movesSoFar) outFile << "   " << m << "\n";
+
     currentState.printBoardDebug();
     return 1;
   }
+
   uint64_t count = 0;
-  const auto& turns = generateTurns(currentState);
-  for (const auto& turn : turns) {
+  auto turns = generateTurns(currentState);
+  for (auto& turn : turns) {
+    movesSoFar.push_back(turn);
+
     gameState origState = currentState;
     applyTurn(turn, currentState);
+
     count += perft(currentState, depth - 1);
+
     currentState = origState;
+    movesSoFar.pop_back();
   }
   return count;
 }
 
 void perftDebug(gameState& currentState, int depth) {
-  for (const auto& turn : generateTurns(currentState)) {
+  for (auto& turn : generateTurns(currentState)) {
     gameState origState = currentState;
     applyTurn(turn, currentState);
     uint64_t count = perft(currentState, depth - 1);
-    std::cout << turn << ":--" << count << "\n";
+    std::cout << turn.numberToSquare() << ":--" << count << "\n";
 
     currentState = origState;
   }

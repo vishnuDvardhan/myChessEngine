@@ -268,16 +268,21 @@ TEST(TurnGenerationsTests, PromotionTurns) {
 
 TEST(PerftTest, PerftTest1) {
   gameState currentState = initBoard();
-  applyTurn({{1, 0}, {3, 0}, Pieces::empty, false, true, {2, 1}, false},
-            currentState);
-  long long int nodes = perft(currentState, 1);
-  ASSERT_EQ(nodes, 20);
-  nodes = perft(currentState, 2);
 
-  perftDebug(currentState, 2);
+  currentState.printBoard();
+  long long int nodes;
+  nodes = perft(currentState, 1);
+  ASSERT_EQ(nodes, 20);
+
+  nodes = perft(currentState, 2);
   ASSERT_EQ(nodes, 400);
+
   nodes = perft(currentState, 3);
+
   ASSERT_EQ(nodes, 8902);
+
+  nodes = perft(currentState, 4);
+  ASSERT_EQ(nodes, 197281);
 }
 
 int main(int argc, char** argv) {
