@@ -735,7 +735,7 @@ vector<Turn> queenToLocations(int i, int j, Colours c, gameState currentState) {
 }
 
 bool canCaptureAPawn(int i, int j, Colours c, gameState currentState) {
-  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (c == Colours::white) {
       return currentState.board[i][j] == Pieces::bPawn;
     }
@@ -745,7 +745,7 @@ bool canCaptureAPawn(int i, int j, Colours c, gameState currentState) {
 }
 
 bool canCaptureAKnight(int i, int j, Colours c, gameState currentState) {
-  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (c == Colours::white) {
       return currentState.board[i][j] == Pieces::bKnight;
     }
@@ -755,7 +755,7 @@ bool canCaptureAKnight(int i, int j, Colours c, gameState currentState) {
 }
 
 bool canCaptureARookOrQueen(int i, int j, Colours c, gameState currentState) {
-  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (c == Colours::white) {
       return (currentState.board[i][j] == Pieces::bRook) ||
              (currentState.board[i][j] == Pieces::bQueen);
@@ -768,7 +768,7 @@ bool canCaptureARookOrQueen(int i, int j, Colours c, gameState currentState) {
 }
 
 bool canCaptureABishopOrQueen(int i, int j, Colours c, gameState currentState) {
-  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (c == Colours::white) {
       return (currentState.board[i][j] == Pieces::bBishop) ||
              (currentState.board[i][j] == Pieces::bQueen);
@@ -781,7 +781,7 @@ bool canCaptureABishopOrQueen(int i, int j, Colours c, gameState currentState) {
 }
 
 bool pawnCaptures(int i, int j, Colours c, gameState currentState) {
-  if (i >= 1 && i <= 7 && j >= 1 && j <= 7) {
+  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
     if (Colours::white == c) {
       return canCaptureAPawn(i + 1, j + 1, c, currentState) ||
              canCaptureAPawn(i + 1, j - 1, c, currentState);
@@ -805,95 +805,103 @@ bool knightCaptures(int i, int j, Colours c, gameState currentState) {
 
 bool rookOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
   for (int k = i + 1; k < 8; k++) {
-    if (!canLand(k, j, c, currentState)) {
-      break;
-    } else if (canCaptureARookOrQueen(k, j, c, currentState)) {
+    if (isEmpty(k, j, currentState)) {
+      continue;
+    }
+    if (canCaptureARookOrQueen(k, j, c, currentState)) {
       return true;
     }
+    break;
   }
-  for (int k = i - 1; k < 8; k--) {
-    if (!canLand(k, j, c, currentState)) {
-      break;
-    } else if (canCaptureARookOrQueen(k, j, c, currentState)) {
+  for (int k = i - 1; k >= 0; k--) {
+    if (isEmpty(k, j, currentState)) {
+      continue;
+    }
+    if (canCaptureARookOrQueen(k, j, c, currentState)) {
       return true;
     }
+    break;
   }
-  for (int k = j - 1; k < 8; k--) {
-    if (!canLand(k, j, c, currentState)) {
-      break;
-    } else if (canCaptureARookOrQueen(i, k, c, currentState)) {
+  for (int k = j - 1; k >= 0; k--) {
+    if (isEmpty(i, k, currentState)) {
+      continue;
+    }
+    if (canCaptureARookOrQueen(i, k, c, currentState)) {
       return true;
     }
+    break;
   }
+
   for (int k = j + 1; k < 8; k++) {
-    if (!canLand(k, j, c, currentState)) {
-      break;
-    } else if (canCaptureARookOrQueen(i, k, c, currentState)) {
+    if (isEmpty(i, k, currentState)) {
+      continue;
+    }
+    if (canCaptureARookOrQueen(i, k, c, currentState)) {
       return true;
     }
+    break;
   }
   return false;
 }
 
 bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
   for (int k = 1; (i + k <= 7 && j + k <= 7); k++) {
-    if (!canLand(i + k, j + k, c, currentState)) {
-      break;
+    if (isEmpty(i + k, j + k, currentState)) {
+      continue;
     }
     if (canCaptureABishopOrQueen(i + k, j + k, c, currentState)) {
-      cout << "-------bishop or queen captures from " << i + k << " " << j + k
-           << "\n";
       return true;
     }
+    break;
   }
+
   for (int k = 1; (i - k >= 0 && j + k <= 7); k++) {
-    if (!canLand(i - k, j + k, c, currentState)) {
-      break;
+    if (isEmpty(i - k, j + k, currentState)) {
+      continue;
     }
     if (canCaptureABishopOrQueen(i - k, j + k, c, currentState)) {
-      cout << "-------bishop or queen captures from " << i - k << " " << j + k
-           << "\n";
       return true;
     }
+    break;
   }
+
   for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
-    if (!canLand(i - k, j - k, c, currentState)) {
-      break;
+    if (isEmpty(i - k, j - k, currentState)) {
+      continue;
     }
     if (canCaptureABishopOrQueen(i - k, j - k, c, currentState)) {
-      cout << "--------bishop or queen captures from " << i - k << " " << j - k
-           << "\n";
       return true;
     }
+    break;
   }
   for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
-    if (canLand(i + k, j - k, c, currentState)) {
-    } else {
-      break;
+    if (isEmpty(i + k, j - k, currentState)) {
+      continue;
     }
     if (canCaptureABishopOrQueen(i + k, j - k, c, currentState)) {
-      cout << "bishop or queen captures from " << i + k << " " << j - k << "\n";
       return true;
     }
+    break;
   }
+
   return false;
 }
 
 bool isInCheck(int i, int j, Colours currentColour, gameState currentState) {
   if (pawnCaptures(i, j, currentColour, currentState)) {
-    cout << "pawn captures\n";
+    // cout << "pawn captures\n";
     return true;
   }
   if (knightCaptures(i, j, currentColour, currentState)) {
     return true;
-    cout << "knight captures\n";
+    // cout << "knight captures\n";
   }
   if (rookOrQueenCaptures(i, j, currentColour, currentState)) {
-    cout << "rook or queen captures\n";
+    // cout << "rook or queen captures\n";
     return true;
   }
   if (bishopOrQueenCaptures(i, j, currentColour, currentState)) {
-    cout << "bishop  or queen captures\n";
+    // cout << "bishop  or queen captures\n";
     return true;
   }
   return false;
@@ -1045,7 +1053,7 @@ vector<Turn> generateTurns(gameState& currentStat) {
     if (!isInCheck(kingLocation.first, kingLocation.second, c, currentStat)) {
       turns.push_back(turn);
     } else {
-      cout << "king is in check\n";
+      // cout << "king is in check\n";
     }
     currentStat = originalState;
   }
@@ -1054,27 +1062,31 @@ vector<Turn> generateTurns(gameState& currentStat) {
 }
 std::vector<Turn> movesSoFar;
 
-uint64_t perft(gameState& currentState, int depth) {
+uint64_t perft(gameState& currentState, int depth, bool isRoot = true) {
+  // if (isRoot) {
+  //   cout << "Perft at root state" << "\n";
+  //   currentState.printBoard();
+  // }
   if (depth == 0) {
-    outFile << "Leaf at depth=0. Sequence of moves:\n";
-    for (auto& m : movesSoFar) outFile << "   " << m << "\n";
+    // outFile << "Leaf at depth=0. Sequence of moves:\n";
+    // for (auto& m : movesSoFar) outFile << "   " << m << "\n";
 
-    currentState.printBoardDebug();
+    // currentState.printBoardDebug();
     return 1;
   }
 
   uint64_t count = 0;
   auto turns = generateTurns(currentState);
   for (auto& turn : turns) {
-    movesSoFar.push_back(turn);
+    // movesSoFar.push_back(turn);
 
     gameState origState = currentState;
     applyTurn(turn, currentState);
 
-    count += perft(currentState, depth - 1);
+    count += perft(currentState, depth - 1, false);
 
     currentState = origState;
-    movesSoFar.pop_back();
+    // movesSoFar.pop_back();
   }
   return count;
 }
@@ -1084,7 +1096,8 @@ void perftDebug(gameState& currentState, int depth) {
     gameState origState = currentState;
     applyTurn(turn, currentState);
     uint64_t count = perft(currentState, depth - 1);
-    std::cout << turn.numberToSquare() << ":--" << count << "\n";
+
+    std::cout << turn.numberToSquare() << ":" << count << "\n";
 
     currentState = origState;
   }

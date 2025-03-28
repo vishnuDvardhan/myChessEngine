@@ -62,7 +62,6 @@ TEST(TurnGenerationTests, PawnTurns) {
   gameState currentState = initBoard();
   cout << "Initial board\n";
   currentState.board[2][2] = Pieces::bPawn;
-  // currentState.printBoard();
 
   vector<Turn> pawnTurnsActual =
       pawnToLocations(1, 1, Colours::white, currentState);
@@ -72,11 +71,6 @@ TEST(TurnGenerationTests, PawnTurns) {
       {{1, 1}, {3, 1}, Pieces::empty, false, true, {2, 1}, false},
       {{1, 1}, {2, 2}, Pieces::empty, false, false, {-1, -1}, false}};
   gameState origState = currentState;
-  // for (auto& turn : pawnTurnsActual) {
-  //   applyTurn(turn);
-  //   currentState.printBoard();
-  //   currentState = origState;
-  // }
 
   ASSERT_EQ(pawnTurnsActual, pawnTurnsExpected);
 }
@@ -271,18 +265,11 @@ TEST(PerftTest, PerftTest1) {
 
   currentState.printBoard();
   long long int nodes;
-  nodes = perft(currentState, 1);
-  ASSERT_EQ(nodes, 20);
 
-  nodes = perft(currentState, 2);
-  ASSERT_EQ(nodes, 400);
+  currentState.printBoard();
 
-  nodes = perft(currentState, 3);
-
-  ASSERT_EQ(nodes, 8902);
-
-  nodes = perft(currentState, 4);
-  ASSERT_EQ(nodes, 197281);
+  nodes = perft(currentState, 8);
+  ASSERT_EQ(nodes, 84998978956);
 }
 
 int main(int argc, char** argv) {
