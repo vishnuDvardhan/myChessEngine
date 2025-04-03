@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 using namespace std;
 
@@ -27,6 +28,20 @@ enum Pieces : int {
   bKing,
   bQueen
 };
+
+unordered_map<char, Pieces> charToPiece{
+    {' ', Pieces::empty},   {'P', Pieces::wPawn}, {'N', Pieces::wKnight},
+    {'B', Pieces::wBishop}, {'R', Pieces::wRook}, {'Q', Pieces::wQueen},
+    {'K', Pieces::wKing},   {'p', Pieces::bPawn}, {'n', Pieces::bKnight},
+    {'b', Pieces::bBishop}, {'r', Pieces::bRook}, {'q', Pieces::bQueen},
+    {'k', Pieces::bKing}};
+
+unordered_map<Pieces, char> pieceToChar{
+    {Pieces::empty, ' '},   {Pieces::wPawn, 'P'}, {Pieces::wKnight, 'N'},
+    {Pieces::wBishop, 'B'}, {Pieces::wRook, 'R'}, {Pieces::wQueen, 'Q'},
+    {Pieces::wKing, 'K'},   {Pieces::bPawn, 'p'}, {Pieces::bKnight, 'n'},
+    {Pieces::bBishop, 'b'}, {Pieces::bRook, 'r'}, {Pieces::bQueen, 'q'},
+    {Pieces::bKing, 'k'}};
 
 std::string pieceToString(Pieces piece) {
   switch (piece) {
@@ -61,6 +76,8 @@ std::string pieceToString(Pieces piece) {
   }
 }
 struct gameState {
+  Square wKingLocation = {-1, -1};
+  Square bKingLocation = {-1, -1};
   Pieces board[8][8];
   Square enpassantSq = {-1, -1};
   Colours currentColour = Colours::white;
@@ -72,7 +89,7 @@ struct gameState {
     bool wQueenSide = true;
     bool bKingSide = true;
     bool bQueenSide = true;
-  };
+  } castling;
 
   void printBoard() {
     std::cout << "    ";
@@ -280,6 +297,71 @@ gameState initBoard() {
   currentState.enpassantSq = {-1, -1};
   currentState.currentColour = Colours::white;
   return currentState;
+}
+
+void initBoardWithFen(gameState& currentState, string fen) {
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      currentState.board[i][j] = Pieces::empty;
+    }
+  }
+  if (fen.empty()) {
+    fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+  }
+  int i = 7;
+  int j = 0;
+  bool parseBoard = true;
+  bool enPassantSq = false;
+  for (const auto& ch : fen) {
+    if (ch == ' ') {
+      parseBoard = false;
+    }
+    if (parseBoard) {
+      if (ch == '/') {
+        i--;
+        j = 0;
+      } else if (ch >= '1' and ch <= '7') {
+        j = j + int(ch) - 48;
+      } else if (ch == '8') {
+        j = 0;
+      } else {
+        currentState.board[i][j] = charToPiece[ch];
+        if (currentState.board[i][j] == Pieces::wKing) {
+          currentState.wKingLocation.first = i;
+          currentState.wKingLocation.second = j;
+        } else if (currentState.board[i][j] == Pieces::bKing) {
+          currentState.bKingLocation.first = i;
+          currentState.bKingLocation.second = j;
+        }
+        j++;
+      }
+    } else {
+      if (ch == 'w') {
+        currentState.currentColour = Colours::white;
+      } else if (ch == 'b') {
+        currentState.currentColour = Colours::black;
+
+      } else if (ch == 'K') {
+        currentState.castling.wkingSide = true;
+      } else if (ch == 'Q') {
+        currentState.castling.wQueenSide = true;
+      } else if (ch == 'k') {
+        currentState.castling.bKingSide = true;
+      } else if (ch == 'q') {
+        currentState.castling.bQueenSide = true;
+      } else if (ch >= 'a' && ch <= 'h') {
+        currentState.enpassantSq.second = int(ch) - 97;
+        enPassantSq = true;
+      } else if (enPassantSq &&
+                     ((currentState.currentColour == Colours::white) &&
+                      ch == '6') ||
+                 (!(currentState.currentColour == Colours::white) &&
+                  ch == '3')) {
+        enPassantSq = false;
+        currentState.enpassantSq.first = int(ch) - 49;
+      }
+    }
+  }
 }
 
 void printBoard(gameState currentState) {
@@ -912,7 +994,8 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
 
   if (c == Colours::white) {
     if (currentState.wCastle) {
-      if (currentState.board[0][1] == Pieces::empty &&
+      if (currentState.castling.wQueenSide == true &&
+          currentState.board[0][1] == Pieces::empty &&
           currentState.board[0][2] == Pieces::empty &&
           currentState.board[0][3] == Pieces::empty) {
         if (!isInCheck(0, 2, c, currentState) &&
@@ -922,7 +1005,8 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
           toLocations.push_back({{0, 4}, {0, 2}, Pieces::empty, true});
         }
       }
-      if (currentState.board[0][5] == Pieces::empty &&
+      if (currentState.castling.wkingSide == true &&
+          currentState.board[0][5] == Pieces::empty &&
           currentState.board[0][6] == Pieces::empty) {
         if (!isInCheck(0, 5, c, currentState) &&
             !isInCheck(0, 6, c, currentState) &&
@@ -933,7 +1017,8 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
     }
   } else {
     if (currentState.bCastle) {
-      if (currentState.board[7][1] == Pieces::empty &&
+      if (currentState.castling.bQueenSide == true &&
+          currentState.board[7][1] == Pieces::empty &&
           currentState.board[7][2] == Pieces::empty &&
           currentState.board[7][3] == Pieces::empty) {
         if (!isInCheck(7, 2, c, currentState) &&
@@ -945,7 +1030,8 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
       }
       if (currentState.board[7][5] == Pieces::empty &&
           currentState.board[7][6] == Pieces::empty) {
-        if (!isInCheck(7, 5, c, currentState) &&
+        if (currentState.castling.bKingSide == true &&
+            !isInCheck(7, 5, c, currentState) &&
             !isInCheck(7, 6, c, currentState) &&
             !isInCheck(7, 4, c, currentState)) {
           toLocations.push_back({{7, 4}, {7, 6}, Pieces::empty, true});
@@ -1023,13 +1109,25 @@ void applyTurn(Turn turn, gameState& currentStat) {
     if (j == 2) {
       currentStat.board[i][3] = currentStat.board[i][0];
       currentStat.board[i][0] = Pieces::empty;
-    }
-    if (j == 6) {
+      if (i == 0) {
+        if (j == 2) {
+          currentStat.castling.wQueenSide = false;
+        } else if (j == 6) {
+          currentStat.castling.wkingSide = false;
+        }
+      } else if (i == 7) {
+        if (j == 2) {
+          currentStat.castling.bQueenSide = false;
+        } else if (j == 6) {
+          currentStat.castling.bKingSide = false;
+        }
+      }
       currentStat.board[i][5] = currentStat.board[i][7];
       currentStat.board[i][7] = Pieces::empty;
     }
     if (currentStat.currentColour == Colours::white)
       currentStat.wCastle = false;
+
     else {
       currentStat.bCastle = false;
     }
