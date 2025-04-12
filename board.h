@@ -518,7 +518,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c, gameState currentState) {
       }
     }
     if (canPawnCapture(i + 1, j - 1, c, currentState)) {
-      if (i == 7) {
+      if (i + 1 == 7) {
         toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wQueen});
         toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wRook});
         toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wBishop});
@@ -995,17 +995,19 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
   if (c == Colours::white) {
     if (currentState.wCastle) {
       if (currentState.castling.wQueenSide == true &&
+          currentState.board[0][0] == Pieces::wRook &&
           currentState.board[0][1] == Pieces::empty &&
           currentState.board[0][2] == Pieces::empty &&
           currentState.board[0][3] == Pieces::empty) {
         if (!isInCheck(0, 2, c, currentState) &&
             !isInCheck(0, 3, c, currentState) &&
-            !isInCheck(0, 1, c, currentState) &&
+            // !isInCheck(0, 1, c, currentState) &&
             !isInCheck(0, 4, c, currentState)) {
           toLocations.push_back({{0, 4}, {0, 2}, Pieces::empty, true});
         }
       }
       if (currentState.castling.wkingSide == true &&
+          currentState.board[0][7] == Pieces::wRook &&
           currentState.board[0][5] == Pieces::empty &&
           currentState.board[0][6] == Pieces::empty) {
         if (!isInCheck(0, 5, c, currentState) &&
@@ -1018,20 +1020,22 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
   } else {
     if (currentState.bCastle) {
       if (currentState.castling.bQueenSide == true &&
+          currentState.board[7][0] == Pieces::bRook &&
           currentState.board[7][1] == Pieces::empty &&
           currentState.board[7][2] == Pieces::empty &&
           currentState.board[7][3] == Pieces::empty) {
         if (!isInCheck(7, 2, c, currentState) &&
             !isInCheck(7, 3, c, currentState) &&
-            !isInCheck(7, 1, c, currentState) &&
+            // !isInCheck(7, 1, c, currentState) &&
             !isInCheck(7, 4, c, currentState)) {
           toLocations.push_back({{7, 4}, {7, 2}, Pieces::empty, true});
         }
       }
-      if (currentState.board[7][5] == Pieces::empty &&
+      if (currentState.castling.bKingSide == true &&
+          currentState.board[7][7] == Pieces::bRook &&
+          currentState.board[7][5] == Pieces::empty &&
           currentState.board[7][6] == Pieces::empty) {
-        if (currentState.castling.bKingSide == true &&
-            !isInCheck(7, 5, c, currentState) &&
+        if (!isInCheck(7, 5, c, currentState) &&
             !isInCheck(7, 6, c, currentState) &&
             !isInCheck(7, 4, c, currentState)) {
           toLocations.push_back({{7, 4}, {7, 6}, Pieces::empty, true});
@@ -1098,6 +1102,8 @@ void applyTurn(Turn turn, gameState& currentStat) {
   currentStat.board[turn.from.first][turn.from.second] = Pieces::empty;
   currentStat.canEnpassant = turn.isEnpassantInitiater;
   currentStat.enpassantSq = turn.enpassantSquare;
+
+  // Handle en passant
   if (turn.isEnpassantFinisher) {
     if (isWhite(turn.to.first, turn.to.second, currentStat)) {
       currentStat.board[i - 1][j] = Pieces::empty;
@@ -1105,33 +1111,47 @@ void applyTurn(Turn turn, gameState& currentStat) {
       currentStat.board[i + 1][j] = Pieces::empty;
     }
   }
+
+  // Handle castling
   if (turn.castling) {
     if (j == 2) {
       currentStat.board[i][3] = currentStat.board[i][0];
       currentStat.board[i][0] = Pieces::empty;
-      if (i == 0) {
-        if (j == 2) {
-          currentStat.castling.wQueenSide = false;
-        } else if (j == 6) {
-          currentStat.castling.wkingSide = false;
-        }
-      } else if (i == 7) {
-        if (j == 2) {
-          currentStat.castling.bQueenSide = false;
-        } else if (j == 6) {
-          currentStat.castling.bKingSide = false;
-        }
-      }
+    } else if (j == 6) {
       currentStat.board[i][5] = currentStat.board[i][7];
       currentStat.board[i][7] = Pieces::empty;
     }
-    if (currentStat.currentColour == Colours::white)
-      currentStat.wCastle = false;
-
-    else {
-      currentStat.bCastle = false;
+    if (i == 0) {
+      currentStat.castling.wQueenSide = false;
+      currentStat.castling.wkingSide = false;
+    } else if (i == 7) {
+      currentStat.castling.bQueenSide = false;
+      currentStat.castling.bKingSide = false;
     }
   }
+
+  // Make castling false when king or rook moves
+  if (piece == Pieces::wKing) {
+    currentStat.castling.wQueenSide = false;
+    currentStat.castling.wkingSide = false;
+  } else if (piece == Pieces::bKing) {
+    currentStat.castling.bQueenSide = false;
+    currentStat.castling.bKingSide = false;
+  } else if (piece == Pieces::wRook) {
+    if (turn.from.first == 0 && turn.from.second == 0) {
+      currentStat.castling.wQueenSide = false;
+    } else if (turn.from.first == 0 && turn.from.second == 7) {
+      currentStat.castling.wkingSide = false;
+    }
+  } else if (piece == Pieces::bRook) {
+    if (turn.from.first == 7 && turn.from.second == 0) {
+      currentStat.castling.bQueenSide = false;
+    } else if (turn.from.first == 7 && turn.from.second == 7) {
+      currentStat.castling.bKingSide = false;
+    }
+  }
+
+  // Update current colour
   if (currentStat.currentColour == Colours::white) {
     currentStat.currentColour = Colours::black;
   } else {
