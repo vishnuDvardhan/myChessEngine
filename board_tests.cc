@@ -108,19 +108,49 @@ TEST(TurnGenerationsTests, GenerateCorrectTurnTests) {
          << "To: (" << turn.to.first << ", " << turn.to.second << ")\n";
   }
   vector<Turn> allTurnsExpected = {
-      {{0, 2}, {2, 3}}, {{0, 2}, {2, 1}}, {{0, 5}, {2, 6}}, {{0, 5}, {2, 4}},
-      {{1, 0}, {2, 0}}, {{1, 0}, {3, 0}}, {{1, 1}, {2, 1}}, {{1, 1}, {3, 1}},
-      {{1, 2}, {2, 2}}, {{1, 2}, {3, 2}}, {{1, 3}, {2, 3}}, {{1, 3}, {3, 3}},
-      {{1, 4}, {2, 4}}, {{1, 4}, {3, 4}}, {{1, 5}, {2, 5}}, {{1, 5}, {3, 5}},
-      {{1, 6}, {2, 6}}, {{1, 6}, {3, 6}}, {{1, 7}, {2, 7}}, {{1, 7}, {3, 7}}};
+      {{0, 1}, {2, 2}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 1}, {2, 0}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 6}, {2, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 6}, {2, 5}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 0}, {2, 0}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 0}, {3, 0}, Pieces::empty, false, true, {2, 0}, false},
+      {{1, 1}, {2, 1}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 1}, {3, 1}, Pieces::empty, false, true, {2, 1}, false},
+      {{1, 2}, {2, 2}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 2}, {3, 2}, Pieces::empty, false, true, {2, 2}, false},
+      {{1, 3}, {2, 3}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 3}, {3, 3}, Pieces::empty, false, true, {2, 3}, false},
+      {{1, 4}, {2, 4}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 4}, {3, 4}, Pieces::empty, false, true, {2, 4}, false},
+      {{1, 5}, {2, 5}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 5}, {3, 5}, Pieces::empty, false, true, {2, 5}, false},
+      {{1, 6}, {2, 6}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 6}, {3, 6}, Pieces::empty, false, true, {2, 6}, false},
+      {{1, 7}, {2, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 7}, {3, 7}, Pieces::empty, false, true, {2, 7}, false}};
   ASSERT_EQ(allTurnsActual, allTurnsExpected);
   currentState.board[2][3] = Pieces::bBishop;
   allTurnsExpected = {
-      {{0, 2}, {2, 3}}, {{0, 2}, {2, 1}}, {{0, 5}, {2, 6}}, {{0, 5}, {2, 4}},
-      {{1, 0}, {2, 0}}, {{1, 0}, {3, 0}}, {{1, 1}, {2, 1}}, {{1, 1}, {3, 1}},
-      {{1, 2}, {2, 2}}, {{1, 2}, {3, 2}}, {{1, 2}, {2, 3}}, {{1, 4}, {2, 4}},
-      {{1, 4}, {3, 4}}, {{1, 4}, {2, 3}}, {{1, 5}, {2, 5}}, {{1, 5}, {3, 5}},
-      {{1, 6}, {2, 6}}, {{1, 6}, {3, 6}}, {{1, 7}, {2, 7}}, {{1, 7}, {3, 7}}};
+      {{0, 1}, {2, 2}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 1}, {2, 0}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 6}, {2, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 6}, {2, 5}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 0}, {2, 0}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 0}, {3, 0}, Pieces::empty, false, true, {2, 0}, false},
+      {{1, 1}, {2, 1}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 1}, {3, 1}, Pieces::empty, false, true, {2, 1}, false},
+      {{1, 2}, {2, 2}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 2}, {3, 2}, Pieces::empty, false, true, {2, 2}, false},
+      {{1, 2}, {2, 3}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 4}, {2, 4}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 4}, {3, 4}, Pieces::empty, false, true, {2, 4}, false},
+      {{1, 4}, {2, 3}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 5}, {2, 5}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 5}, {3, 5}, Pieces::empty, false, true, {2, 5}, false},
+      {{1, 6}, {2, 6}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 6}, {3, 6}, Pieces::empty, false, true, {2, 6}, false},
+      {{1, 7}, {2, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{1, 7}, {3, 7}, Pieces::empty, false, true, {2, 7}, false}};
   allTurnsActual = generateTurns(currentState);
   ASSERT_EQ(allTurnsActual, allTurnsExpected);
 }
@@ -150,10 +180,10 @@ TEST(TurnGenerationsTests, Enpassanttest) {
       {{6, 6}, {4, 6}, Pieces::empty, false, true, {5, 6}, false},
       {{6, 7}, {5, 7}, Pieces::empty, false, false, {-1, -1}, false},
       {{6, 7}, {4, 7}, Pieces::empty, false, true, {5, 7}, false},
-      {{7, 2}, {5, 3}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 2}, {5, 1}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 5}, {5, 6}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 5}, {5, 4}, Pieces::empty, false, false, {-1, -1}, false}};
+      {{7, 1}, {5, 2}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 1}, {5, 0}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 6}, {5, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 6}, {5, 5}, Pieces::empty, false, false, {-1, -1}, false}};
   ASSERT_EQ(actualTurns, expectedTurns);
 }
 
@@ -166,13 +196,14 @@ TEST(TurnGenerationsTests, CastlingTest) {
   cout << "current colors is " << currentState.currentColour;
   currentState.currentColour = Colours::white;
   vector<Turn> allTurnsActual = generateTurns(currentState);
+  cout << "\n1\n";
   vector<Turn> allTurnsExpected = {
       {{0, 0}, {0, 1}, Pieces::empty, false, false, {-1, -1}, false},
       {{0, 0}, {0, 2}, Pieces::empty, false, false, {-1, -1}, false},
       {{0, 0}, {0, 3}, Pieces::empty, false, false, {-1, -1}, false},
       {{0, 4}, {0, 3}, Pieces::empty, false, false, {-1, -1}, false},
-      {{0, 5}, {2, 6}, Pieces::empty, false, false, {-1, -1}, false},
-      {{0, 5}, {2, 4}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 6}, {2, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{0, 6}, {2, 5}, Pieces::empty, false, false, {-1, -1}, false},
       {{1, 0}, {2, 0}, Pieces::empty, false, false, {-1, -1}, false},
       {{1, 0}, {3, 0}, Pieces::empty, false, true, {2, 0}, false},
       {{1, 1}, {2, 1}, Pieces::empty, false, false, {-1, -1}, false},
@@ -180,7 +211,7 @@ TEST(TurnGenerationsTests, CastlingTest) {
       {{1, 2}, {2, 2}, Pieces::empty, false, false, {-1, -1}, false},
       {{1, 2}, {3, 2}, Pieces::empty, false, true, {2, 2}, false},
       {{1, 3}, {2, 3}, Pieces::empty, false, false, {-1, -1}, false},
-      {{1, 3}, {3, 3}, Pieces::empty, false, true, {2, 2}, false},
+      {{1, 3}, {3, 3}, Pieces::empty, false, true, {2, 3}, false},
       {{1, 4}, {2, 4}, Pieces::empty, false, false, {-1, -1}, false},
       {{1, 4}, {3, 4}, Pieces::empty, false, true, {2, 4}, false},
       {{1, 5}, {2, 5}, Pieces::empty, false, false, {-1, -1}, false},
@@ -192,6 +223,7 @@ TEST(TurnGenerationsTests, CastlingTest) {
       {{0, 4}, {0, 2}, Pieces::empty, true, false, {-1, -1}, false}};
 
   ASSERT_EQ(allTurnsActual, allTurnsExpected);
+  cout << "\n2\n";
   currentState = initBoard();
   currentState.currentColour = Colours::black;
   currentState.board[7][1] = Pieces::empty;
@@ -219,8 +251,8 @@ TEST(TurnGenerationsTests, CastlingTest) {
       {{7, 0}, {7, 2}, Pieces::empty, false, false, {-1, -1}, false},
       {{7, 0}, {7, 3}, Pieces::empty, false, false, {-1, -1}, false},
       {{7, 4}, {7, 3}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 5}, {5, 6}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 5}, {5, 4}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 6}, {5, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 6}, {5, 5}, Pieces::empty, false, false, {-1, -1}, false},
       {{7, 4}, {7, 2}, Pieces::empty, true, false, {-1, -1}, false}};
   ASSERT_EQ(allTurnsActual, allTurnsExpected);
 }
@@ -253,10 +285,10 @@ TEST(TurnGenerationsTests, PromotionTurns) {
       {{6, 6}, {4, 6}, Pieces::empty, false, true, {5, 6}, false},
       {{6, 7}, {5, 7}, Pieces::empty, false, false, {-1, -1}, false},
       {{6, 7}, {4, 7}, Pieces::empty, false, true, {5, 7}, false},
-      {{7, 2}, {5, 3}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 2}, {5, 1}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 5}, {5, 6}, Pieces::empty, false, false, {-1, -1}, false},
-      {{7, 5}, {5, 4}, Pieces::empty, false, false, {-1, -1}, false}};
+      {{7, 1}, {5, 2}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 1}, {5, 0}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 6}, {5, 7}, Pieces::empty, false, false, {-1, -1}, false},
+      {{7, 6}, {5, 5}, Pieces::empty, false, false, {-1, -1}, false}};
   ASSERT_EQ(actualTurns, expectedTurns);
 }
 
