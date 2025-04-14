@@ -109,9 +109,28 @@ struct gameState {
       std::cout << "\n";
     }
     std::cout << "\n";
+
     string currentColourString =
         (currentColour == Colours::white) ? "white" : "black";
-    cout << "current colour is " << currentColourString << endl;
+    std::cout << "Current colour is " << currentColourString << std::endl;
+
+    std::cout << "Castling rights:\n";
+    std::cout << "  White King-side: " << (castling.wkingSide ? "Yes" : "No")
+              << "\n";
+    std::cout << "  White Queen-side: " << (castling.wQueenSide ? "Yes" : "No")
+              << "\n";
+    std::cout << "  Black King-side: " << (castling.bKingSide ? "Yes" : "No")
+              << "\n";
+    std::cout << "  Black Queen-side: " << (castling.bQueenSide ? "Yes" : "No")
+              << "\n";
+
+    std::cout << "Overall castling rights:\n";
+    std::cout << "  White: "
+              << ((castling.wkingSide || castling.wQueenSide) ? "Yes" : "No")
+              << "\n";
+    std::cout << "  Black: "
+              << ((castling.bKingSide || castling.bQueenSide) ? "Yes" : "No")
+              << "\n";
   }
 
   void printBoardDebug() {
@@ -305,6 +324,10 @@ void initBoardWithFen(gameState& currentState, string fen) {
       currentState.board[i][j] = Pieces::empty;
     }
   }
+  currentState.castling.wkingSide = false;
+  currentState.castling.wQueenSide = false;
+  currentState.castling.bKingSide = false;
+  currentState.castling.bQueenSide = false;
   if (fen.empty()) {
     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   }
