@@ -1,6 +1,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -29,6 +30,37 @@ enum Pieces : int {
   bQueen
 };
 
+int pieceValue(Pieces p) {
+  switch (p) {
+    case wPawn:
+      return 1;
+    case wKnight:
+      return 3;
+    case wBishop:
+      return 3;
+    case wRook:
+      return 5;
+    case wQueen:
+      return 9;
+    case wKing:
+      return 0;
+    case bPawn:
+      return -1;
+    case bKnight:
+      return -3;
+    case bBishop:
+      return -3;
+    case bRook:
+      return -5;
+    case bQueen:
+      return -9;
+    case bKing:
+      return 0;
+    default:
+      return 0;
+  }
+}
+
 unordered_map<char, Pieces> charToPiece{
     {' ', Pieces::empty},   {'P', Pieces::wPawn}, {'N', Pieces::wKnight},
     {'B', Pieces::wBishop}, {'R', Pieces::wRook}, {'Q', Pieces::wQueen},
@@ -37,7 +69,7 @@ unordered_map<char, Pieces> charToPiece{
     {'k', Pieces::bKing}};
 
 unordered_map<Pieces, char> pieceToChar{
-    {Pieces::empty, ' '},   {Pieces::wPawn, 'P'}, {Pieces::wKnight, 'N'},
+    {Pieces::empty, '.'},   {Pieces::wPawn, 'P'}, {Pieces::wKnight, 'N'},
     {Pieces::wBishop, 'B'}, {Pieces::wRook, 'R'}, {Pieces::wQueen, 'Q'},
     {Pieces::wKing, 'K'},   {Pieces::bPawn, 'p'}, {Pieces::bKnight, 'n'},
     {Pieces::bBishop, 'b'}, {Pieces::bRook, 'r'}, {Pieces::bQueen, 'q'},
@@ -243,35 +275,36 @@ struct Turn {
            pieceTable[(promotionPiece)];
   }
 
-  std::string str() const {
-    std::ostringstream os;
-    os << " { "
-       << "from=(" << from.first << ", " << from.second << "), "
-       << "to=(" << to.first << ", " << to.second << "), "
-       << "promotionPiece=Pieces::" << pieceToString(promotionPiece) << ", "
-       << "castling=" << (castling ? "true" : "false") << ", "
-       << "isEnpassantInitiater=" << (isEnpassantInitiater ? "true" : "false")
-       << ", "
-       << "enpassantSquare=(" << enpassantSquare.first << ", "
-       << enpassantSquare.second << "), "
-       << "isEnpassantFinisher=" << (isEnpassantFinisher ? "true" : "false")
-       << " }\n";
-    return os.str();
-  }
-
-  // usefull for debugging
-  //  std::string str() const {
-  //    std::ostringstream os;
-  //    os << "\n{{" << from.first << ", " << from.second << "}, "
-  //       << "{" << to.first << ", " << to.second << "}, "
-  //       << "Pieces::" << (pieceToString(promotionPiece)) << ", "
-  //       << (castling ? "true" : "false") << ", "
-  //       << (isEnpassantInitiater ? "true" : "false") << ", "
-  //       << "{" << enpassantSquare.first << ", " << enpassantSquare.second
-  //       << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
-
+  // std::string str() const {
+  //   std::ostringstream os;
+  //   os << " { "
+  //      << "from=(" << from.first << ", " << from.second << "), "
+  //      << "to=(" << to.first << ", " << to.second << "), "
+  //      << "promotionPiece=Pieces::" << pieceToString(promotionPiece) << ", "
+  //      << "castling=" << (castling ? "true" : "false") << ", "
+  //      << "isEnpassantInitiater=" << (isEnpassantInitiater ? "true" :
+  //      "false")
+  //      << ", "
+  //      << "enpassantSquare=(" << enpassantSquare.first << ", "
+  //      << enpassantSquare.second << "), "
+  //      << "isEnpassantFinisher=" << (isEnpassantFinisher ? "true" : "false")
+  //      << " }\n";
   //   return os.str();
   // }
+
+  // usefull for debugging
+  std::string str() const {
+    std::ostringstream os;
+    os << "\n{{" << from.first << ", " << from.second << "}, "
+       << "{" << to.first << ", " << to.second << "}, "
+       << "Pieces::" << (pieceToString(promotionPiece)) << ", "
+       << (castling ? "true" : "false") << ", "
+       << (isEnpassantInitiater ? "true" : "false") << ", "
+       << "{" << enpassantSquare.first << ", " << enpassantSquare.second
+       << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
+
+    return os.str();
+  }
 
   friend std::ostream& operator<<(std::ostream& os, const Turn& turn) {
     os << turn.str();
@@ -1230,6 +1263,76 @@ uint64_t perft(gameState& currentState, int depth, bool isRoot = true) {
     // movesSoFar.pop_back();
   }
   return count;
+}
+
+std::string toFen(const gameState& gs) {
+  std::stringstream fen;
+
+  // Piece placement
+  for (int row = 7; row >= 0; row--) {
+    int emptyCount = 0;
+    for (int col = 0; col < 8; col++) {
+      Pieces piece = gs.board[row][col];
+      if (piece == Pieces::empty) {
+        emptyCount++;
+      } else {
+        if (emptyCount > 0) {
+          fen << emptyCount;
+          emptyCount = 0;
+        }
+        fen << pieceToChar[piece];
+      }
+    }
+    if (emptyCount > 0) {
+      fen << emptyCount;
+    }
+    if (row > 0) fen << '/';
+  }
+  fen << ' ';
+
+  fen << (gs.currentColour == Colours::white ? 'w' : 'b') << ' ';
+
+  if (gs.castling.wkingSide || gs.castling.wQueenSide ||
+      gs.castling.bKingSide || gs.castling.bQueenSide) {
+    std::string castlingRights = "";
+    if (gs.castling.wkingSide) castlingRights += "K";
+    if (gs.castling.wQueenSide) castlingRights += "Q";
+    if (gs.castling.bKingSide) castlingRights += "k";
+    if (gs.castling.bQueenSide) castlingRights += "q";
+    fen << (castlingRights.empty() ? "-" : castlingRights);
+  } else {
+    fen << "-";
+  }
+  fen << ' ';
+
+  // En passant target square
+  if (gs.enpassantSq.first != -1 && gs.enpassantSq.second != -1) {
+    char col = 'a' + gs.enpassantSq.first;
+    int row = gs.enpassantSq.second + 1;
+    fen << col << row;
+  } else {
+    fen << "-";
+  }
+  fen << ' ';
+
+  fen << "0 ";
+
+  fen << "1";
+
+  return fen.str();
+}
+
+int evaluateBoard(const gameState& gs) {
+  int evaluationScore = 0;
+
+  for (int i = 0; i < 8; i++) {
+    for (int j = 0; j < 8; j++) {
+      Pieces piece = gs.board[i][j];
+      evaluationScore += pieceValue(piece);
+    }
+  }
+
+  return evaluationScore;
 }
 
 void perftDebug(gameState& currentState, int depth) {
