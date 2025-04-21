@@ -141,28 +141,6 @@ struct gameState {
       std::cout << "\n";
     }
     std::cout << "\n";
-
-    string currentColourString =
-        (currentColour == Colours::white) ? "white" : "black";
-    std::cout << "Current colour is " << currentColourString << std::endl;
-
-    std::cout << "Castling rights:\n";
-    std::cout << "  White King-side: " << (castling.wkingSide ? "Yes" : "No")
-              << "\n";
-    std::cout << "  White Queen-side: " << (castling.wQueenSide ? "Yes" : "No")
-              << "\n";
-    std::cout << "  Black King-side: " << (castling.bKingSide ? "Yes" : "No")
-              << "\n";
-    std::cout << "  Black Queen-side: " << (castling.bQueenSide ? "Yes" : "No")
-              << "\n";
-
-    std::cout << "Overall castling rights:\n";
-    std::cout << "  White: "
-              << ((castling.wkingSide || castling.wQueenSide) ? "Yes" : "No")
-              << "\n";
-    std::cout << "  Black: "
-              << ((castling.bKingSide || castling.bQueenSide) ? "Yes" : "No")
-              << "\n";
   }
 
   void printBoardDebug() {
@@ -244,21 +222,30 @@ struct Turn {
   Square from;
   Square to;
   Pieces promotionPiece = Pieces::empty;
-  bool castling = false;
-  bool isEnpassantInitiater = false;
-  bool isEnpassantFinisher = false;
-  Square enpassantSquare = {-1, -1};
 
-  Turn(Square f, Square t, Pieces p = Pieces::empty, bool c = false,
-       bool enpassant = false, Square enpassantSq = {-1, -1},
-       bool enpassantFinisher = false)
-      : from(f),
-        to(t),
-        promotionPiece(p),
-        castling(c),
-        isEnpassantInitiater(enpassant),
-        enpassantSquare(enpassantSq),
-        isEnpassantFinisher(enpassantFinisher) {}
+  // Default constructor
+  Turn() : from({-1, -1}), to({-1, -1}), promotionPiece(Pieces::empty) {}
+
+  Turn(Square f, Square t, Pieces p = Pieces::empty)
+      : from(f), to(t), promotionPiece(p) {}
+
+  Turn(const std::string& move) {
+    if (move.length() < 4 || move.length() > 5) {
+      throw std::invalid_argument("Invalid move string");
+    }
+
+    from.second = move[0] - 'a';
+    from.first = move[1] - '1';
+    to.second = move[2] - 'a';
+    to.first = move[3] - '1';
+
+    if (move.length() == 5) {
+      char promotionChar = move[4];
+      promotionPiece = charToPiece[promotionChar];
+    } else {
+      promotionPiece = Pieces::empty;
+    }
+  }
 
   bool operator==(const Turn& other) const {
     return from == other.from && to == other.to &&
@@ -272,37 +259,14 @@ struct Turn {
     }
     return ((char)(from.second + 97) + to_string(from.first + 1) +
             (char)(to.second + 97) + to_string(to.first + 1)) +
-           pieceTable[(promotionPiece)];
+           string(1, pieceTable[promotionPiece]);
   }
 
-  // std::string str() const {
-  //   std::ostringstream os;
-  //   os << " { "
-  //      << "from=(" << from.first << ", " << from.second << "), "
-  //      << "to=(" << to.first << ", " << to.second << "), "
-  //      << "promotionPiece=Pieces::" << pieceToString(promotionPiece) << ", "
-  //      << "castling=" << (castling ? "true" : "false") << ", "
-  //      << "isEnpassantInitiater=" << (isEnpassantInitiater ? "true" :
-  //      "false")
-  //      << ", "
-  //      << "enpassantSquare=(" << enpassantSquare.first << ", "
-  //      << enpassantSquare.second << "), "
-  //      << "isEnpassantFinisher=" << (isEnpassantFinisher ? "true" : "false")
-  //      << " }\n";
-  //   return os.str();
-  // }
-
-  // usefull for debugging
   std::string str() const {
     std::ostringstream os;
     os << "\n{{" << from.first << ", " << from.second << "}, "
        << "{" << to.first << ", " << to.second << "}, "
-       << "Pieces::" << (pieceToString(promotionPiece)) << ", "
-       << (castling ? "true" : "false") << ", "
-       << (isEnpassantInitiater ? "true" : "false") << ", "
-       << "{" << enpassantSquare.first << ", " << enpassantSquare.second
-       << "}, " << (isEnpassantFinisher ? "true" : "false") << "}";
-
+       << "Pieces::" << pieceToString(promotionPiece) << "}";
     return os.str();
   }
 
@@ -558,8 +522,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c, gameState currentState) {
 
       if (i == 1) {
         if (canPawnLand(i + 2, j, c, currentState)) {
-          toLocations.push_back(
-              {{i, j}, {i + 2, j}, Pieces::empty, false, true, {i + 1, j}});
+          toLocations.push_back({{i, j}, {i + 2, j}, Pieces::empty});
         }
       }
     }
@@ -584,22 +547,18 @@ vector<Turn> pawnToLocations(int i, int j, Colours c, gameState currentState) {
       }
     }
     if (canPawnEnpassant(i + 1, j - 1, c, currentState)) {
-      toLocations.push_back({{i, j},
-                             {i + 1, j - 1},
-                             Pieces::empty,
-                             false,
-                             false,
-                             {-1, -1},
-                             true});
+      toLocations.push_back({
+          {i, j},
+          {i + 1, j - 1},
+          Pieces::empty,
+      });
     }
     if (canPawnEnpassant(i + 1, j + 1, c, currentState)) {
-      toLocations.push_back({{i, j},
-                             {i + 1, j + 1},
-                             Pieces::empty,
-                             false,
-                             false,
-                             {-1, -1},
-                             true});
+      toLocations.push_back({
+          {i, j},
+          {i + 1, j + 1},
+          Pieces::empty,
+      });
     }
   }
   if (c == Colours::black) {
@@ -614,8 +573,7 @@ vector<Turn> pawnToLocations(int i, int j, Colours c, gameState currentState) {
       }
       if (i == 6) {
         if (canPawnLand(i - 2, j, c, currentState)) {
-          toLocations.push_back(
-              {{i, j}, {i - 2, j}, Pieces::empty, false, true, {i - 1, j}});
+          toLocations.push_back({{i, j}, {i - 2, j}, Pieces::empty});
         }
       }
     }
@@ -641,22 +599,18 @@ vector<Turn> pawnToLocations(int i, int j, Colours c, gameState currentState) {
     }
 
     if (canPawnEnpassant(i - 1, j - 1, c, currentState)) {
-      toLocations.push_back({{i, j},
-                             {i - 1, j - 1},
-                             Pieces::empty,
-                             false,
-                             false,
-                             {-1, -1},
-                             true});
+      toLocations.push_back({
+          {i, j},
+          {i - 1, j - 1},
+          Pieces::empty,
+      });
     }
     if (canPawnEnpassant(i - 1, j + 1, c, currentState)) {
-      toLocations.push_back({{i, j},
-                             {i - 1, j + 1},
-                             Pieces::empty,
-                             false,
-                             false,
-                             {-1, -1},
-                             true});
+      toLocations.push_back({
+          {i, j},
+          {i - 1, j + 1},
+          Pieces::empty,
+      });
     }
   }
   return toLocations;
@@ -1059,7 +1013,7 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
             !isInCheck(0, 3, c, currentState) &&
             // !isInCheck(0, 1, c, currentState) &&
             !isInCheck(0, 4, c, currentState)) {
-          toLocations.push_back({{0, 4}, {0, 2}, Pieces::empty, true});
+          toLocations.push_back({{0, 4}, {0, 2}, Pieces::empty});
         }
       }
       if (currentState.castling.wkingSide == true &&
@@ -1069,7 +1023,7 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
         if (!isInCheck(0, 5, c, currentState) &&
             !isInCheck(0, 6, c, currentState) &&
             !isInCheck(0, 4, c, currentState)) {
-          toLocations.push_back({{0, 4}, {0, 6}, Pieces::empty, true});
+          toLocations.push_back({{0, 4}, {0, 6}, Pieces::empty});
         }
       }
     }
@@ -1084,7 +1038,7 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
             !isInCheck(7, 3, c, currentState) &&
             // !isInCheck(7, 1, c, currentState) &&
             !isInCheck(7, 4, c, currentState)) {
-          toLocations.push_back({{7, 4}, {7, 2}, Pieces::empty, true});
+          toLocations.push_back({{7, 4}, {7, 2}, Pieces::empty});
         }
       }
       if (currentState.castling.bKingSide == true &&
@@ -1094,7 +1048,7 @@ vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
         if (!isInCheck(7, 5, c, currentState) &&
             !isInCheck(7, 6, c, currentState) &&
             !isInCheck(7, 4, c, currentState)) {
-          toLocations.push_back({{7, 4}, {7, 6}, Pieces::empty, true});
+          toLocations.push_back({{7, 4}, {7, 6}, Pieces::empty});
         }
       }
     }
@@ -1150,33 +1104,55 @@ vector<Turn> getPseudoCorrect(Colours colour, gameState currentState) {
 }
 
 void applyTurn(Turn turn, gameState& currentStat) {
-  Pieces piece = (turn.promotionPiece == Pieces::empty)
-                     ? (currentStat.board[turn.from.first][turn.from.second])
-                     : turn.promotionPiece;
+  // Get moving piece and clear the from square.
+  Pieces piece = currentStat.board[turn.from.first][turn.from.second];
   int i = turn.to.first, j = turn.to.second;
-  currentStat.board[turn.to.first][turn.to.second] = piece;
   currentStat.board[turn.from.first][turn.from.second] = Pieces::empty;
-  currentStat.canEnpassant = turn.isEnpassantInitiater;
-  currentStat.enpassantSq = turn.enpassantSquare;
 
-  // Handle en passant
-  if (turn.isEnpassantFinisher) {
-    if (isWhite(turn.to.first, turn.to.second, currentStat)) {
+  // --- En Passant setup (for pawn double move) ---
+  if (piece == Pieces::wPawn && turn.from.first == 1 && turn.to.first == 3) {
+    // White pawn moved two squares: en passant target is square in between.
+    currentStat.enpassantSq = {2, turn.from.second};
+    currentStat.canEnpassant = true;
+  } else if (piece == Pieces::bPawn && turn.from.first == 6 &&
+             turn.to.first == 4) {
+    currentStat.enpassantSq = {5, turn.from.second};
+    currentStat.canEnpassant = true;
+  } else {
+    currentStat.enpassantSq = {-1, -1};
+    currentStat.canEnpassant = false;
+  }
+
+  // --- Handle en passant capture ---
+  // If a pawn moves diagonally into an empty square, remove the opponent pawn.
+  if ((piece == Pieces::wPawn || piece == Pieces::bPawn) &&
+      abs(turn.to.second - turn.from.second) == 1 &&
+      currentStat.board[i][j] == Pieces::empty) {
+    if (piece == Pieces::wPawn) {
       currentStat.board[i - 1][j] = Pieces::empty;
     } else {
       currentStat.board[i + 1][j] = Pieces::empty;
     }
   }
 
-  // Handle castling
-  if (turn.castling) {
-    if (j == 2) {
+  // --- Place the moved (or promoted) piece ---
+  currentStat.board[i][j] =
+      (turn.promotionPiece == Pieces::empty) ? piece : turn.promotionPiece;
+
+  // --- Handle castling ---
+  // If a king moves two squares horizontally, it is a castling move.
+  if ((piece == Pieces::wKing || piece == Pieces::bKing) &&
+      abs(turn.to.second - turn.from.second) == 2) {
+    if (turn.to.second == 2) {
+      // Queen-side castling: move rook from file 0 to file 3.
       currentStat.board[i][3] = currentStat.board[i][0];
       currentStat.board[i][0] = Pieces::empty;
-    } else if (j == 6) {
+    } else if (turn.to.second == 6) {
+      // King-side castling: move rook from file 7 to file 5.
       currentStat.board[i][5] = currentStat.board[i][7];
       currentStat.board[i][7] = Pieces::empty;
     }
+    // Update castling rights for the moving king.
     if (i == 0) {
       currentStat.castling.wQueenSide = false;
       currentStat.castling.wkingSide = false;
@@ -1186,7 +1162,7 @@ void applyTurn(Turn turn, gameState& currentStat) {
     }
   }
 
-  // Make castling false when king or rook moves
+  // --- Update castling rights based on piece movement ---
   if (piece == Pieces::wKing) {
     currentStat.castling.wQueenSide = false;
     currentStat.castling.wkingSide = false;
@@ -1207,12 +1183,10 @@ void applyTurn(Turn turn, gameState& currentStat) {
     }
   }
 
-  // Update current colour
-  if (currentStat.currentColour == Colours::white) {
-    currentStat.currentColour = Colours::black;
-  } else {
-    currentStat.currentColour = Colours::white;
-  }
+  // --- Update current colour ---
+  currentStat.currentColour = (currentStat.currentColour == Colours::white)
+                                  ? Colours::black
+                                  : Colours::white;
 }
 
 vector<Turn> generateTurns(gameState& currentStat) {
@@ -1237,30 +1211,19 @@ vector<Turn> generateTurns(gameState& currentStat) {
 std::vector<Turn> movesSoFar;
 
 uint64_t perft(gameState& currentState, int depth, bool isRoot = true) {
-  // if (isRoot) {
-  //   cout << "Perft at root state" << "\n";
-  //   currentState.printBoard();
-  // }
   if (depth == 0) {
-    // outFile << "Leaf at depth=0. Sequence of moves:\n";
-    // for (auto& m : movesSoFar) outFile << "   " << m << "\n";
-
-    // currentState.printBoardDebug();
     return 1;
   }
 
   uint64_t count = 0;
   auto turns = generateTurns(currentState);
   for (auto& turn : turns) {
-    // movesSoFar.push_back(turn);
-
     gameState origState = currentState;
     applyTurn(turn, currentState);
 
     count += perft(currentState, depth - 1, false);
 
     currentState = origState;
-    // movesSoFar.pop_back();
   }
   return count;
 }
@@ -1268,7 +1231,6 @@ uint64_t perft(gameState& currentState, int depth, bool isRoot = true) {
 std::string toFen(const gameState& gs) {
   std::stringstream fen;
 
-  // Piece placement
   for (int row = 7; row >= 0; row--) {
     int emptyCount = 0;
     for (int col = 0; col < 8; col++) {
@@ -1305,7 +1267,6 @@ std::string toFen(const gameState& gs) {
   }
   fen << ' ';
 
-  // En passant target square
   if (gs.enpassantSq.first != -1 && gs.enpassantSq.second != -1) {
     char col = 'a' + gs.enpassantSq.first;
     int row = gs.enpassantSq.second + 1;
@@ -1329,6 +1290,17 @@ int evaluateBoard(const gameState& gs) {
     for (int j = 0; j < 8; j++) {
       Pieces piece = gs.board[i][j];
       evaluationScore += pieceValue(piece);
+    }
+  }
+
+  auto turns = generateTurns(const_cast<gameState&>(gs));
+  if (turns.empty()) {
+    Pieces king =
+        gs.currentColour == Colours::white ? Pieces::wKing : Pieces::bKing;
+    Square kingLocation = getPieceLocation(king, gs);
+    if (isInCheck(kingLocation.first, kingLocation.second, gs.currentColour,
+                  gs)) {
+      return gs.currentColour == Colours::white ? -100000 : 100000;
     }
   }
 
