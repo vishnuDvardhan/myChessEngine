@@ -259,7 +259,7 @@ struct Turn {
     }
     return ((char)(from.second + 97) + to_string(from.first + 1) +
             (char)(to.second + 97) + to_string(to.first + 1)) +
-           string(1, pieceTable[promotionPiece]);
+           (char)tolower(pieceTable[promotionPiece]);
   }
 
   std::string str() const {
