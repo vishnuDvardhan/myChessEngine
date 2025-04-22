@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "minmax-alphabeta_pruning.h"
+#include "Iterative-deepening-minimax-alphabeta_pruning.h"
 
 using namespace std;
 
@@ -96,7 +96,7 @@ void uciLoop() {
         }
       }
     } else if (command == "go") {
-      Turn bestMove = findBestMove(currentState, 4);
+      Turn bestMove = findBestMove(currentState, 5);
       cout << "bestmove " << bestMove.numberToSquare() << endl;
       cout.flush();
     } else if (command == "quit") {
