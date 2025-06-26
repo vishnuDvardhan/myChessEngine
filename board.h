@@ -1175,23 +1175,161 @@ void generateTurns(gameState& currentState, Turns& correctToLocations, int& m) {
 }
 std::vector<Turn> movesSoFar;
 
+uint64_t getCountCorrectTurns(gameState& currentState) {
+  bool isWhitesTurn = currentState.isWhitesTurn;
+  uint64_t count = 0;
+  Turns toLocations;
+  int n = 0;
+  getPseudoCorrect(currentState, toLocations, n);
+
+  auto kingLocation = getKingLocation(currentState, isWhitesTurn);
+  bool includeKnightCapturesValidation = knightCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
+  bool includePawnCapturesValidation = pawnCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
+
+  for (int i = 0; i < n; i++) {
+    auto origWKingLocation = currentState.wKingLocation;
+    auto origBKingLocation = currentState.bKingLocation;
+    auto origEnPassantSq = currentState.enpassantSq;
+    gameState::Castling origCastling = currentState.castling;
+
+    applyTurn(currentState, toLocations[i]);
+
+    if (toLocations[i].castling) {
+      count++;
+    } else {
+      Square sq = getKingLocation(currentState, isWhitesTurn);
+      if (!isInCheck(currentState, sq.first, sq.second, isWhitesTurn,
+                     includeKnightCapturesValidation,
+                     includePawnCapturesValidation)) {
+        count++;
+      }
+    }
+
+    // undo
+    currentState.wKingLocation = origWKingLocation;
+    currentState.bKingLocation = origBKingLocation;
+    currentState.enpassantSq = origEnPassantSq;
+    currentState.castling = origCastling;
+    currentState.isWhitesTurn = !currentState.isWhitesTurn;
+
+    Square from = toLocations[i].from;
+    Square to = toLocations[i].to;
+    currentState.board[from.first][from.second] =
+        currentState.board[to.first][to.second];
+    currentState.board[to.first][to.second] = toLocations[i].capturedPiece;
+
+    if (toLocations[i].promotionPiece != Pieces::empty) {
+      currentState.board[from.first][from.second] =
+          currentState.isWhitesTurn ? Pieces::wPawn : Pieces::bPawn;
+    }
+
+    if (toLocations[i].enPassant) {
+      currentState.board[from.first][to.second] =
+          currentState.isWhitesTurn ? Pieces::bPawn : Pieces::wPawn;
+    }
+
+    if (toLocations[i].castling) {
+      if (from.first == 2) {
+        if (to.second == 8) {
+          currentState.board[2][7] = Pieces::empty;
+          currentState.board[2][9] = Pieces::wRook;
+        } else if (to.second == 4) {
+          currentState.board[2][5] = Pieces::empty;
+          currentState.board[2][2] = Pieces::wRook;
+        }
+      } else {
+        if (to.second == 8) {
+          currentState.board[9][7] = Pieces::empty;
+          currentState.board[9][9] = Pieces::bRook;
+        } else if (to.second == 4) {
+          currentState.board[9][5] = Pieces::empty;
+          currentState.board[9][2] = Pieces::bRook;
+        }
+      }
+    }
+  }
+  return count;
+}
+
 uint64_t perft(gameState& currentState, int depth) {
   if (depth == 0) return 1;
-
-  Turns legalMoves;
-  int numMoves = 0;
-  generateTurns(currentState, legalMoves, numMoves);
-
-  if (depth == 1) return numMoves;
+  if (depth == 1) return getCountCorrectTurns(currentState);
 
   uint64_t count = 0;
-  for (int i = 0; i < numMoves; i++) {
-    gameState savedState = currentState;
+  Turns turns;
+  int n = 0;
+  getPseudoCorrect(currentState, turns, n);
 
-    applyTurn(currentState, legalMoves[i]);
-    count += perft(currentState, depth - 1);
+  bool isWhitesTurn = currentState.isWhitesTurn;
+  auto kingLocation = getKingLocation(currentState, isWhitesTurn);
+  bool includeKnightCapturesValidation = knightCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
+  bool includePawnCapturesValidation = pawnCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
 
-    currentState = savedState;
+  for (int i = 0; i < n; i++) {
+    Square origWKingLocation = currentState.wKingLocation;
+    Square origBKingLocation = currentState.bKingLocation;
+    Square origEnPassantSq = currentState.enpassantSq;
+    gameState::Castling origCastling = currentState.castling;
+
+    applyTurn(currentState, turns[i]);
+
+    if (turns[i].castling) {
+      count += perft(currentState, depth - 1);
+    } else {
+      Square sq = getKingLocation(currentState, isWhitesTurn);
+      if (!isInCheck(currentState, sq.first, sq.second, isWhitesTurn,
+                     includeKnightCapturesValidation,
+                     includePawnCapturesValidation)) {
+        count += perft(currentState, depth - 1);
+      }
+    }
+
+    // Undo move
+    currentState.wKingLocation = origWKingLocation;
+    currentState.bKingLocation = origBKingLocation;
+    currentState.enpassantSq = origEnPassantSq;
+    currentState.castling = origCastling;
+    currentState.isWhitesTurn = !currentState.isWhitesTurn;
+
+    Square from = turns[i].from;
+    Square to = turns[i].to;
+    currentState.board[from.first][from.second] =
+        currentState.board[to.first][to.second];
+    currentState.board[to.first][to.second] = turns[i].capturedPiece;
+
+    if (turns[i].promotionPiece != Pieces::empty) {
+      currentState.board[from.first][from.second] =
+          currentState.isWhitesTurn ? Pieces::wPawn : Pieces::bPawn;
+    }
+
+    if (turns[i].enPassant) {
+      currentState.board[from.first][to.second] =
+          currentState.isWhitesTurn ? Pieces::bPawn : Pieces::wPawn;
+    }
+
+    if (turns[i].castling) {
+      if (from.first == 2) {
+        if (to.second == 8) {
+          currentState.board[2][7] = Pieces::empty;
+          currentState.board[2][9] = Pieces::wRook;
+        } else if (to.second == 4) {
+          currentState.board[2][5] = Pieces::empty;
+          currentState.board[2][2] = Pieces::wRook;
+        }
+      } else {
+        if (to.second == 8) {
+          currentState.board[9][7] = Pieces::empty;
+          currentState.board[9][9] = Pieces::bRook;
+        } else if (to.second == 4) {
+          currentState.board[9][5] = Pieces::empty;
+          currentState.board[9][2] = Pieces::bRook;
+        }
+      }
+    }
   }
 
   return count;
