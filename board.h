@@ -14,20 +14,28 @@ ofstream outFile("perft_debug.txt");
 
 enum Colours : int { black, white };
 
-enum Pieces : int {
-  empty,
-  wPawn,
-  wKnight,
-  wBishop,
-  wRook,
-  wKing,
-  wQueen,
-  bPawn,
-  bKnight,
-  bBishop,
-  bRook,
-  bKing,
-  bQueen
+enum Pieces : uint16_t {
+  empty = 0,
+  wPawn = 1 << 1,
+  wKnight = 1 << 2,
+  wBishop = 1 << 3,
+  wRook = 1 << 4,
+  wQueen = 1 << 5,
+  wKing = 1 << 6,
+  bPawn = 1 << 7,
+  bKnight = 1 << 8,
+  bBishop = 1 << 9,
+  bRook = 1 << 10,
+  bQueen = 1 << 11,
+  bKing = 1 << 12,
+  invalid = 1 << 13,
+};
+
+struct Castling {
+  bool wKingSide = false;
+  bool wQueenSide = false;
+  bool bKingSide = false;
+  bool bQueenSide = false;
 };
 
 int pieceValue(Pieces p) {
@@ -110,9 +118,9 @@ std::string pieceToString(Pieces piece) {
 struct gameState {
   Square wKingLocation = {-1, -1};
   Square bKingLocation = {-1, -1};
-  Pieces board[8][8];
+  Pieces board[12][12];
   Square enpassantSq = {-1, -1};
-  Colours currentColour = Colours::white;
+  bool isWhitesTurn = true;
   bool canEnpassant = true;
   bool wCastle = true;
   bool bCastle = true;
@@ -123,40 +131,17 @@ struct gameState {
     bool bQueenSide = true;
   } castling;
 
-  void printBoard() {
-    std::cout << "    ";
-    for (int col = 0; col < 8; col++) {
-      std::cout << (char)(col + 97) << " ";
-    }
-    std::cout << "\n\n";
-
-    // Print rows from bottom (0) to top (7)
-    for (int i = 7; i >= 0; i--) {
-      // Label each row on the left
-      std::cout << " " << i + 1 << "  ";
-      // Print the row contents from left to right
-      for (int j = 0; j < 8; j++) {
-        std::cout << pieceTable[static_cast<int>(board[i][j])] << " ";
-      }
-      std::cout << "\n";
-    }
-    std::cout << "\n";
-  }
-
   void printBoardDebug() {
     outFile << "    ";
     for (int col = 0; col < 8; col++) {
-      outFile << col << " ";
+      outFile << (char)(col + 97) << " ";
     }
     outFile << "\n\n";
 
-    // Print rows from bottom (0) to top (7)
-    for (int i = 0; i < 8; i++) {
-      // Label each row on the left
-      outFile << " " << i << "  ";
-      // Print the row contents from left to right
-      for (int j = 0; j < 8; j++) {
-        outFile << pieceTable[static_cast<int>(board[i][j])] << " ";
+    for (int i = 9; i >= 2; i--) {
+      outFile << " " << (i - 1) << "  ";
+      for (int j = 2; j < 10; j++) {
+        outFile << pieceToChar[board[i][j]] << " ";
       }
       outFile << "\n";
     }
@@ -164,80 +149,35 @@ struct gameState {
   }
 };
 
-// gameState currentState;
-
-bool isEmpty(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::empty;
-}
-
-bool isRook(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::wRook ||
-         currentState.board[i][j] == Pieces::bRook;
-}
-
-bool isKnight(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::wKnight ||
-         currentState.board[i][j] == Pieces::bKnight;
-}
-
-bool isPawn(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::wPawn ||
-         currentState.board[i][j] == Pieces::bPawn;
-}
-
-bool isBishop(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::wBishop ||
-         currentState.board[i][j] == Pieces::bBishop;
-}
-
-bool isQueen(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::wQueen ||
-         currentState.board[i][j] == Pieces::bQueen;
-}
-
-bool isKing(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::wKing ||
-         currentState.board[i][j] == Pieces::bKing;
-}
-
-Square getPieceLocation(Pieces piece, gameState currentState) {
-  for (int i = 0; i < 8; i++) {
-    for (int j = 0; j < 8; j++) {
-      if (currentState.board[i][j] == piece) {
-        return {i, j};
-      }
-    }
-  }
-  return {-1, -1};
-}
-
-int getDistance(int x1, int y1, int x2, int y2) {
-  int dx = abs(x2 - x1);
-  int dy = abs(y2 - y1);
-  int distance = max(dx, dy);
-  return distance;
-}
-
 struct Turn {
   Square from;
   Square to;
   Pieces promotionPiece = Pieces::empty;
-
+  bool castling = false;
+  Square enPassantSq = {-1, -1};
+  bool enPassant = false;
+  Pieces capturedPiece = Pieces::empty;
   // Default constructor
   Turn() : from({-1, -1}), to({-1, -1}), promotionPiece(Pieces::empty) {}
 
-  Turn(Square f, Square t, Pieces p = Pieces::empty)
-      : from(f), to(t), promotionPiece(p) {}
+  Turn(Square f, Square t, Pieces p = Pieces::empty, bool c = false,
+       Square enPassantSq = {-1, -1}, bool enPassant = false)
+      : from(f),
+        to(t),
+        promotionPiece(p),
+        castling(c),
+        enPassantSq(enPassantSq),
+        enPassant(enPassant) {}
 
   Turn(const std::string& move) {
     if (move.length() < 4 || move.length() > 5) {
       throw std::invalid_argument("Invalid move string");
     }
 
-    from.second = move[0] - 'a';
-    from.first = move[1] - '1';
-    to.second = move[2] - 'a';
-    to.first = move[3] - '1';
+    from.second = move[0] - 'a' + 2;
+    from.first = move[1] - '1' + 2;
+    to.second = move[2] - 'a' + 2;
+    to.first = move[3] - '1' + 2;
 
     if (move.length() == 5) {
       char promotionChar = move[4];
@@ -254,12 +194,12 @@ struct Turn {
 
   string numberToSquare() {
     if (promotionPiece == Pieces::empty) {
-      return ((char)(from.second + 97) + to_string(from.first + 1) +
-              (char)(to.second + 97) + to_string(to.first + 1));
+      return ((char)(from.second + 95) + to_string(from.first - 1) +
+              (char)(to.second + 95) + to_string(to.first - 1));
     }
-    return ((char)(from.second + 97) + to_string(from.first + 1) +
-            (char)(to.second + 97) + to_string(to.first + 1)) +
-           (char)tolower(pieceTable[promotionPiece]);
+    return ((char)(from.second + 95) + to_string(from.first - 1) +
+            (char)(to.second + 95) + to_string(to.first - 1)) +
+           pieceToChar[promotionPiece];
   }
 
   std::string str() const {
@@ -275,6 +215,120 @@ struct Turn {
     return os;
   }
 };
+typedef Turn Turns[255];
+
+// Basic piece detection functions
+bool isEmpty(int i, int j, gameState currentState);
+bool isWhite(int i, int j, gameState currentState);
+bool isBlack(int i, int j, gameState currentState);
+bool isPawn(int i, int j, gameState currentState);
+bool isKnight(int i, int j, gameState currentState);
+bool isBishop(int i, int j, gameState currentState);
+bool isRook(int i, int j, gameState currentState);
+bool isQueen(int i, int j, gameState currentState);
+bool isKing(int i, int j, gameState currentState);
+
+// Check detection functions
+bool pawnCaptures(gameState& currentState, int i, int j, bool isWhitesTurn);
+bool knightCaptures(gameState& currentState, int i, int j, bool isWhitesTurn);
+bool rookOrQueenCaptures(gameState& currentState, int i, int j,
+                         bool isWhitesTurn);
+bool bishopOrQueenCaptures(gameState& currentState, int i, int j,
+                           bool isWhitesTurn);
+bool isInCheck(gameState& currentState, int i, int j, bool isWhitesTurn,
+               bool includeKnightCapturesValidation = true,
+               bool includePawnCapturesValidation = true);
+
+// Helper functions
+bool isWhiteOrInvalid(gameState& currentState, int i, int j);
+bool isBlackOrInvalid(gameState& currentState, int i, int j);
+bool canWKnightLand(gameState& currentState, int i, int j);
+bool canBKnightLand(gameState& currentState, int i, int j);
+bool canWKingLand(gameState& currentState, int i, int j,
+                  Square otherKingLocation);
+bool canBKingLand(gameState& currentState, int i, int j,
+                  Square otherKingLocation);
+bool canPawnLandAndCaptureEnPassant(gameState& currentState, int i, int j);
+
+// Utility functions
+Square getKingLocation(gameState& currentState, bool isWhitesTurn);
+Square getPieceLocation(Pieces piece, gameState& currentState);
+Square getEnpassantSq(gameState& currentState, int i, int j, bool isWhitesTurn);
+int getDistance(int x1, int y1, int x2, int y2);
+
+// Movement generation functions
+void pawnToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                     Turns& toLocations, int& n);
+void knightToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                       Turns& toLocations, int& n);
+void bishopToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                       Turns& toLocations, int& n);
+void rookToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                     Turns& toLocations, int& n);
+void queenToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                      Turns& toLocations, int& n);
+void kingToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                     Turns& toLocations, int& n);
+void getCastlingTurns(gameState& currentState, Turns& toLocations, int& n);
+
+// Main generation functions
+void getPseudoCorrect(gameState& currentState, Turns& toLocations, int& n);
+void generateTurns(gameState& currentState, Turns& correctToLocations, int& m);
+void applyTurn(gameState& currentState, Turn& turn);
+
+bool isEmpty(int i, int j, gameState currentState) {
+  return !(currentState.board[i][j] ^ Pieces::empty);
+}
+
+bool isRook(int i, int j, gameState currentState) {
+  return (currentState.board[i][j] & 0b10000010000);
+}
+
+bool isKnight(int i, int j, gameState currentState) {
+  return (currentState.board[i][j] & 0b100000100);
+}
+
+bool isPawn(int i, int j, gameState currentState) {
+  return (currentState.board[i][j] & 0b10000010);
+}
+
+bool isBishop(int i, int j, gameState currentState) {
+  return (currentState.board[i][j] & 0b1000001000);
+}
+
+bool isQueen(int i, int j, gameState currentState) {
+  return (currentState.board[i][j] & 0b100000100000);
+}
+
+bool isKing(int i, int j, gameState currentState) {
+  return (currentState.board[i][j] & 0b1000001000000);
+}
+
+bool canWKnightLand(gameState& currentState, int i, int j) {
+  return isEmpty(i, j, currentState) || isBlack(i, j, currentState);
+}
+
+bool canBKnightLand(gameState& currentState, int i, int j) {
+  return isEmpty(i, j, currentState) || isWhite(i, j, currentState);
+}
+
+Square getPieceLocation(Pieces piece, gameState& currentState) {
+  for (int i = 2; i <= 9; i++) {
+    for (int j = 2; j <= 9; j++) {
+      if (currentState.board[i][j] == piece) {
+        return {i, j};
+      }
+    }
+  }
+  return {-1, -1};
+}
+
+int getDistance(int x1, int y1, int x2, int y2) {
+  int dx = abs(x2 - x1);
+  int dy = abs(y2 - y1);
+  int distance = max(dx, dy);
+  return distance;
+}
 
 std::string map_to_string(int i, int j) {
   char column = 'a' + j;
@@ -284,54 +338,77 @@ std::string map_to_string(int i, int j) {
 
 gameState initBoard() {
   gameState currentState;
-  for (int i = 0; i <= 7; i++) {
-    currentState.board[1][i] = Pieces::wPawn;
-    currentState.board[6][i] = Pieces::bPawn;
+
+  for (int i = 0; i < 12; i++) {
+    for (int j = 0; j < 12; j++) {
+      currentState.board[i][j] = Pieces::invalid;
+    }
   }
-  for (int i = 2; i < 6; i++) {
-    for (int j = 0; j <= 7; j++) {
+
+  for (int i = 2; i < 10; i++) {
+    for (int j = 2; j < 10; j++) {
       currentState.board[i][j] = Pieces::empty;
     }
   }
 
-  currentState.board[0][0] = Pieces::wRook;
-  currentState.board[0][7] = Pieces::wRook;
-  currentState.board[7][0] = Pieces::bRook;
-  currentState.board[7][7] = Pieces::bRook;
-  currentState.board[0][1] = Pieces::wKnight;
-  currentState.board[0][6] = Pieces::wKnight;
-  currentState.board[7][1] = Pieces::bKnight;
-  currentState.board[7][6] = Pieces::bKnight;
-  currentState.board[0][2] = Pieces::wBishop;
-  currentState.board[0][5] = Pieces::wBishop;
-  currentState.board[7][2] = Pieces::bBishop;
-  currentState.board[7][5] = Pieces::bBishop;
-  currentState.board[0][3] = Pieces::wQueen;
-  currentState.board[7][3] = Pieces::bQueen;
-  currentState.board[0][4] = Pieces::wKing;
-  currentState.board[7][4] = Pieces::bKing;
+  for (int i = 0; i <= 7; i++) {
+    currentState.board[3][i + 2] = Pieces::wPawn;
+    currentState.board[8][i + 2] = Pieces::bPawn;
+  }
+
+  currentState.board[2][2] = Pieces::wRook;
+  currentState.board[2][9] = Pieces::wRook;
+  currentState.board[2][3] = Pieces::wKnight;
+  currentState.board[2][8] = Pieces::wKnight;
+  currentState.board[2][4] = Pieces::wBishop;
+  currentState.board[2][7] = Pieces::wBishop;
+  currentState.board[2][5] = Pieces::wQueen;
+  currentState.board[2][6] = Pieces::wKing;
+
+  currentState.board[9][2] = Pieces::bRook;
+  currentState.board[9][9] = Pieces::bRook;
+  currentState.board[9][3] = Pieces::bKnight;
+  currentState.board[9][8] = Pieces::bKnight;
+  currentState.board[9][4] = Pieces::bBishop;
+  currentState.board[9][7] = Pieces::bBishop;
+  currentState.board[9][5] = Pieces::bQueen;
+  currentState.board[9][6] = Pieces::bKing;
+
+  currentState.wKingLocation = {2, 6};
+  currentState.bKingLocation = {9, 6};
   currentState.enpassantSq = {-1, -1};
-  currentState.currentColour = Colours::white;
+  currentState.isWhitesTurn = true;
+
   return currentState;
 }
 
 void initBoardWithFen(gameState& currentState, string fen) {
-  for (int i = 0; i < 8; i++) {
-    for (int j = 0; j < 8; j++) {
+  for (int i = 0; i < 12; i++) {
+    for (int j = 0; j < 12; j++) {
+      currentState.board[i][j] = Pieces::invalid;
+    }
+  }
+
+  for (int i = 2; i < 10; i++) {
+    for (int j = 2; j < 10; j++) {
       currentState.board[i][j] = Pieces::empty;
     }
   }
+
   currentState.castling.wkingSide = false;
   currentState.castling.wQueenSide = false;
   currentState.castling.bKingSide = false;
   currentState.castling.bQueenSide = false;
+
   if (fen.empty()) {
     fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
   }
-  int i = 7;
-  int j = 0;
+
+  int i = 9;
+  int j = 2;
   bool parseBoard = true;
   bool enPassantSq = false;
+
   for (const auto& ch : fen) {
     if (ch == ' ') {
       parseBoard = false;
@@ -339,11 +416,11 @@ void initBoardWithFen(gameState& currentState, string fen) {
     if (parseBoard) {
       if (ch == '/') {
         i--;
-        j = 0;
+        j = 2;
       } else if (ch >= '1' and ch <= '7') {
         j = j + int(ch) - 48;
       } else if (ch == '8') {
-        j = 0;
+        j = 2;
       } else {
         currentState.board[i][j] = charToPiece[ch];
         if (currentState.board[i][j] == Pieces::wKing) {
@@ -357,10 +434,9 @@ void initBoardWithFen(gameState& currentState, string fen) {
       }
     } else {
       if (ch == 'w') {
-        currentState.currentColour = Colours::white;
+        currentState.isWhitesTurn = true;
       } else if (ch == 'b') {
-        currentState.currentColour = Colours::black;
-
+        currentState.isWhitesTurn = false;
       } else if (ch == 'K') {
         currentState.castling.wkingSide = true;
       } else if (ch == 'Q') {
@@ -372,22 +448,18 @@ void initBoardWithFen(gameState& currentState, string fen) {
       } else if (ch >= 'a' && ch <= 'h') {
         currentState.enpassantSq.second = int(ch) - 97;
         enPassantSq = true;
-      } else if (enPassantSq &&
-                     ((currentState.currentColour == Colours::white) &&
-                      ch == '6') ||
-                 (!(currentState.currentColour == Colours::white) &&
-                  ch == '3')) {
+      } else if (enPassantSq && ((currentState.isWhitesTurn && ch == '6') ||
+                                 (!currentState.isWhitesTurn && ch == '3'))) {
         enPassantSq = false;
         currentState.enpassantSq.first = int(ch) - 49;
       }
     }
   }
 }
-
 void printBoard(gameState currentState) {
-  for (int i = 7; i >= 0; i--) {
-    for (int j = 0; j < 8; j++) {
-      cout << pieceTable[static_cast<int>(currentState.board[i][j])] << " ";
+  for (int i = 9; i >= 2; i--) {
+    for (int j = 2; j < 10; j++) {
+      cout << pieceToChar[currentState.board[i][j]] << " ";
     }
     cout << "\n";
   }
@@ -395,835 +467,869 @@ void printBoard(gameState currentState) {
 }
 
 bool isWhite(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::wPawn ||
-         currentState.board[i][j] == Pieces::wKnight ||
-         currentState.board[i][j] == Pieces::wBishop ||
-         currentState.board[i][j] == Pieces::wRook ||
-         currentState.board[i][j] == Pieces::wQueen ||
-         currentState.board[i][j] == Pieces::wKing;
+  return (currentState.board[i][j] & 0b1111110);
 }
 
 bool isBlack(int i, int j, gameState currentState) {
-  return currentState.board[i][j] == Pieces::bPawn ||
-         currentState.board[i][j] == Pieces::bKnight ||
-         currentState.board[i][j] == Pieces::bBishop ||
-         currentState.board[i][j] == Pieces::bRook ||
-         currentState.board[i][j] == Pieces::bQueen ||
-         currentState.board[i][j] == Pieces::bKing;
+  return (currentState.board[i][j] & 0b1111110000000);
 }
 
-bool canLand(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (currentState.board[i][j] == Pieces::empty) {
-      return true;
-    }
-    if (c == Colours::white) {
-      return isBlack(i, j, currentState);
-    }
-    return isWhite(i, j, currentState);
-  }
-  return false;
+bool isWhiteOrInvalid(gameState& currentState, int i, int j) {
+  return (currentState.board[i][j] & 0b10000001111110);
 }
 
-bool canKingLand(int i, int j, Colours c, Square OppositeKingSquare,
-                 gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (canLand(i, j, c, currentState) &&
-        (getDistance(i, j, OppositeKingSquare.first,
-                     OppositeKingSquare.second) > 1)) {
-      return true;
-    }
-  }
-  return false;
-}
-bool canCapture(int i, int j, Colours c, gameState currentState) {
-  if (c == Colours::white) {
-    return isBlack(i, j, currentState);
-  }
-  return isWhite(i, j, currentState);
+bool isBlackOrInvalid(gameState& currentState, int i, int j) {
+  return (currentState.board[i][j] & 0b11111110000000);
 }
 
-bool canPawnLand(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (currentState.board[i][j] == Pieces::empty) {
-      return true;
-    }
+Square getKingLocation(gameState& currentState, bool isWhitesTurn) {
+  if (isWhitesTurn) {
+    return currentState.wKingLocation;
   }
-  return false;
+  return currentState.bKingLocation;
 }
 
-bool canPawnCapture(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (currentState.board[i][j] == Pieces::empty) {
-      return false;
-    }
-    if (c == Colours::white) {
-      return isBlack(i, j, currentState);
-    }
-    return isWhite(i, j, currentState);
-  }
-  return false;
+bool canPawnLandAndCaptureEnPassant(gameState& currentState, int i, int j) {
+  return currentState.enpassantSq.first == i &&
+         currentState.enpassantSq.second == j;
 }
 
-bool canPawnEnpassant(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if ((i == currentState.enpassantSq.first) &&
-        (j == currentState.enpassantSq.second)) {
-      return isEmpty(i, j, currentState);
-    }
-  }
-  return false;
-}
-
-vector<Turn> kingToLocations(int i, int j, Colours c, gameState currentState) {
-  vector<Turn> toLocations;
-  Pieces oppositeKing = c == Colours::white ? Pieces::bKing : Pieces::wKing;
-  Square oppositeKingSquare = getPieceLocation(oppositeKing, currentState);
-
-  if (canKingLand(i + 1, j + 1, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i + 1, j + 1}});
-  }
-  if (canKingLand(i + 1, j, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i + 1, j}});
-  }
-  if (canKingLand(i + 1, j - 1, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i + 1, j - 1}});
-  }
-  if (canKingLand(i, j + 1, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i, j + 1}});
-  }
-  if (canKingLand(i, j - 1, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i, j - 1}});
-  }
-  if (canKingLand(i - 1, j + 1, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i - 1, j + 1}});
-  }
-  if (canKingLand(i - 1, j, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i - 1, j}});
-  }
-  if (canKingLand(i - 1, j - 1, c, oppositeKingSquare, currentState)) {
-    toLocations.push_back({{i, j}, {i - 1, j - 1}});
-  }
-  return toLocations;
-}
-
-vector<Turn> pawnToLocations(int i, int j, Colours c, gameState currentState) {
-  vector<Turn> toLocations;
-  if (c == Colours::white) {
-    if (canPawnLand(i + 1, j, c, currentState)) {
-      if (i + 1 == 7) {
-        toLocations.push_back({{i, j}, {i + 1, j}, Pieces::wQueen});
-        toLocations.push_back({{i, j}, {i + 1, j}, Pieces::wRook});
-        toLocations.push_back({{i, j}, {i + 1, j}, Pieces::wBishop});
-        toLocations.push_back({{i, j}, {i + 1, j}, Pieces::wKnight});
-      } else {
-        toLocations.push_back({{i, j}, {i + 1, j}});
-      }
-
-      if (i == 1) {
-        if (canPawnLand(i + 2, j, c, currentState)) {
-          toLocations.push_back({{i, j}, {i + 2, j}, Pieces::empty});
-        }
-      }
-    }
-    if (canPawnCapture(i + 1, j + 1, c, currentState)) {
-      if (i + 1 == 7) {
-        toLocations.push_back({{i, j}, {i + 1, j + 1}, Pieces::wQueen});
-        toLocations.push_back({{i, j}, {i + 1, j + 1}, Pieces::wRook});
-        toLocations.push_back({{i, j}, {i + 1, j + 1}, Pieces::wBishop});
-        toLocations.push_back({{i, j}, {i + 1, j + 1}, Pieces::wKnight});
-      } else {
-        toLocations.push_back({{i, j}, {i + 1, j + 1}});
-      }
-    }
-    if (canPawnCapture(i + 1, j - 1, c, currentState)) {
-      if (i + 1 == 7) {
-        toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wQueen});
-        toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wRook});
-        toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wBishop});
-        toLocations.push_back({{i, j}, {i + 1, j - 1}, Pieces::wKnight});
-      } else {
-        toLocations.push_back({{i, j}, {i + 1, j - 1}});
-      }
-    }
-    if (canPawnEnpassant(i + 1, j - 1, c, currentState)) {
-      toLocations.push_back({
-          {i, j},
-          {i + 1, j - 1},
-          Pieces::empty,
-      });
-    }
-    if (canPawnEnpassant(i + 1, j + 1, c, currentState)) {
-      toLocations.push_back({
-          {i, j},
-          {i + 1, j + 1},
-          Pieces::empty,
-      });
-    }
-  }
-  if (c == Colours::black) {
-    if (canPawnLand(i - 1, j, c, currentState)) {
-      if (i - 1 == 0) {
-        toLocations.push_back({{i, j}, {i - 1, j}, Pieces::bQueen});
-        toLocations.push_back({{i, j}, {i - 1, j}, Pieces::bRook});
-        toLocations.push_back({{i, j}, {i - 1, j}, Pieces::bBishop});
-        toLocations.push_back({{i, j}, {i - 1, j}, Pieces::bKnight});
-      } else {
-        toLocations.push_back({{i, j}, {i - 1, j}});
-      }
-      if (i == 6) {
-        if (canPawnLand(i - 2, j, c, currentState)) {
-          toLocations.push_back({{i, j}, {i - 2, j}, Pieces::empty});
-        }
-      }
-    }
-    if (canPawnCapture(i - 1, j - 1, c, currentState)) {
-      if (i - 1 == 0) {
-        toLocations.push_back({{i, j}, {i - 1, j - 1}, Pieces::bQueen});
-        toLocations.push_back({{i, j}, {i - 1, j - 1}, Pieces::bRook});
-        toLocations.push_back({{i, j}, {i - 1, j - 1}, Pieces::bBishop});
-        toLocations.push_back({{i, j}, {i - 1, j - 1}, Pieces::bKnight});
-      } else {
-        toLocations.push_back({{i, j}, {i - 1, j - 1}});
-      }
-    }
-    if (canPawnCapture(i - 1, j + 1, c, currentState)) {
-      if (i - 1 == 0) {
-        toLocations.push_back({{i, j}, {i - 1, j + 1}, Pieces::bQueen});
-        toLocations.push_back({{i, j}, {i - 1, j + 1}, Pieces::bRook});
-        toLocations.push_back({{i, j}, {i - 1, j + 1}, Pieces::bBishop});
-        toLocations.push_back({{i, j}, {i - 1, j + 1}, Pieces::bKnight});
-      } else {
-        toLocations.push_back({{i, j}, {i - 1, j + 1}});
-      }
-    }
-
-    if (canPawnEnpassant(i - 1, j - 1, c, currentState)) {
-      toLocations.push_back({
-          {i, j},
-          {i - 1, j - 1},
-          Pieces::empty,
-      });
-    }
-    if (canPawnEnpassant(i - 1, j + 1, c, currentState)) {
-      toLocations.push_back({
-          {i, j},
-          {i - 1, j + 1},
-          Pieces::empty,
-      });
-    }
-  }
-  return toLocations;
-}
-
-vector<Turn> knightToLocations(int i, int j, Colours c,
-                               gameState currentState) {
-  vector<Turn> toLocations;
-  if (canLand(i + 2, j + 1, c, currentState)) {
-    toLocations.push_back({{i, j}, {i + 2, j + 1}});
-  }
-  if (canLand(i + 2, j - 1, c, currentState)) {
-    toLocations.push_back({{i, j}, {i + 2, j - 1}});
-  }
-  if (canLand(i + 1, j + 2, c, currentState)) {
-    toLocations.push_back({{i, j}, {i + 1, j + 2}});
-  }
-  if (canLand(i + 1, j - 2, c, currentState)) {
-    toLocations.push_back({{i, j}, {i + 1, j - 2}});
-  }
-  if (canLand(i - 2, j + 1, c, currentState)) {
-    toLocations.push_back({{i, j}, {i - 2, j + 1}});
-  }
-  if (canLand(i - 2, j - 1, c, currentState)) {
-    toLocations.push_back({{i, j}, {i - 2, j - 1}});
-  }
-  if (canLand(i - 1, j + 2, c, currentState)) {
-    toLocations.push_back({{i, j}, {i - 1, j + 2}});
-  }
-  if (canLand(i - 1, j - 2, c, currentState)) {
-    toLocations.push_back({{i, j}, {i - 1, j - 2}});
-  }
-
-  return toLocations;
-}
-
-vector<Turn> bishopToLocations(int i, int j, Colours c,
-                               gameState currentState) {
-  vector<Turn> toLocations;
-
-  for (int k = 1; (i + k <= 7 && j + k <= 7); k++) {
-    if (canLand(i + k, j + k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i + k, j + k}});
-    } else {
-      break;
-    }
-    if (canCapture(i + k, j + k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = 1; (i - k >= 0 && j + k <= 7); k++) {
-    if (canLand(i - k, j + k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i - k, j + k}});
-    } else {
-      break;
-    }
-    if (canCapture(i - k, j + k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
-    if (canLand(i - k, j - k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i - k, j - k}});
-    } else {
-      break;
-    }
-    if (canCapture(i - k, j - k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
-    if (canLand(i + k, j - k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i + k, j - k}});
-    } else {
-      break;
-    }
-    if (canCapture(i + k, j - k, c, currentState)) {
-      break;
-    }
-  }
-
-  return toLocations;
-}
-
-vector<Turn> rookToLocations(int i, int j, Colours c, gameState currentState) {
-  vector<Turn> toLocations;
-
-  for (int k = i + 1; k < 8; k++) {
-    if (canLand(k, j, c, currentState)) {
-      toLocations.push_back({{i, j}, {k, j}});
-    } else {
-      break;
-    }
-    if (canCapture(k, j, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = i - 1; k >= 0; k--) {
-    if (canLand(k, j, c, currentState)) {
-      toLocations.push_back({{i, j}, {k, j}});
-    } else {
-      break;
-    }
-    if (canCapture(k, j, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = j - 1; k >= 0; k--) {
-    if (canLand(i, k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i, k}});
-    } else {
-      break;
-    }
-    if (canCapture(i, k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = j + 1; k < 8; k++) {
-    if (canLand(i, k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i, k}});
-    } else {
-      break;
-    }
-    if (canCapture(i, k, c, currentState)) {
-      break;
-    }
-  }
-  return toLocations;
-}
-vector<Turn> queenToLocations(int i, int j, Colours c, gameState currentState) {
-  vector<Turn> toLocations;
-  for (int k = i + 1; k < 8; k++) {
-    if (canLand(k, j, c, currentState)) {
-      toLocations.push_back({{i, j}, {k, j}});
-    } else {
-      break;
-    }
-    if (canCapture(k, j, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = i - 1; k >= 0; k--) {
-    if (canLand(k, j, c, currentState)) {
-      toLocations.push_back({{i, j}, {k, j}});
-    } else {
-      break;
-    }
-    if (canCapture(k, j, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = j - 1; k >= 0; k--) {
-    if (canLand(i, k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i, k}});
-    } else {
-      break;
-    }
-    if (canCapture(i, k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = j + 1; k < 8; k++) {
-    if (canLand(i, k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i, k}});
-    } else {
-      break;
-    }
-    if (canCapture(i, k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = 1; (k + i <= 7 && k + j <= 7); k++) {
-    if (canLand(i + k, j + k, c, currentState)) {
-      toLocations.push_back({{i, j}, {k + i, k + j}});
-    } else {
-      break;
-    }
-    if (canCapture(i + k, j + k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = 1; (i - k >= 0 && k + j <= 7); k++) {
-    if (canLand(i - k, j + k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i - k, k + j}});
-    } else {
-      break;
-    }
-    if (canCapture(i - k, j + k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
-    if (canLand(i - k, j - k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i - k, j - k}});
-    } else {
-      break;
-    }
-    if (canCapture(i - k, j - k, c, currentState)) {
-      break;
-    }
-  }
-  for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
-    if (canLand(i + k, j - k, c, currentState)) {
-      toLocations.push_back({{i, j}, {i + k, j - k}});
-    } else {
-      break;
-    }
-    if (canCapture(i + k, j - k, c, currentState)) {
-      break;
-    }
-  }
-
-  return toLocations;
-}
-
-bool canCaptureAPawn(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (c == Colours::white) {
-      return currentState.board[i][j] == Pieces::bPawn;
-    }
-    return currentState.board[i][j] == Pieces::wPawn;
-  }
-  return false;
-}
-
-bool canCaptureAKnight(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (c == Colours::white) {
-      return currentState.board[i][j] == Pieces::bKnight;
-    }
-    return currentState.board[i][j] == Pieces::wKnight;
-  }
-  return false;
-}
-
-bool canCaptureARookOrQueen(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (c == Colours::white) {
-      return (currentState.board[i][j] == Pieces::bRook) ||
-             (currentState.board[i][j] == Pieces::bQueen);
-    }
-    return (currentState.board[i][j] == Pieces::wRook) ||
-           (currentState.board[i][j] == Pieces::wQueen);
-    ;
-  }
-  return false;
-}
-
-bool canCaptureABishopOrQueen(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (c == Colours::white) {
-      return (currentState.board[i][j] == Pieces::bBishop) ||
-             (currentState.board[i][j] == Pieces::bQueen);
-    }
-    return (currentState.board[i][j] == Pieces::wBishop) ||
-           (currentState.board[i][j] == Pieces::wQueen);
-    ;
-  }
-  return false;
-}
-
-bool pawnCaptures(int i, int j, Colours c, gameState currentState) {
-  if (i >= 0 && i <= 7 && j >= 0 && j <= 7) {
-    if (Colours::white == c) {
-      return canCaptureAPawn(i + 1, j + 1, c, currentState) ||
-             canCaptureAPawn(i + 1, j - 1, c, currentState);
-    }
-    return canCaptureAPawn(i - 1, j + 1, c, currentState) ||
-           canCaptureAPawn(i - 1, j - 1, c, currentState);
-  }
-  return false;
-}
-
-bool knightCaptures(int i, int j, Colours c, gameState currentState) {
-  return (canCaptureAKnight(i + 1, j + 2, c, currentState) ||
-          canCaptureAKnight(i + 1, j - 2, c, currentState) ||
-          canCaptureAKnight(i + 2, j + 1, c, currentState) ||
-          canCaptureAKnight(i + 2, j - 1, c, currentState) ||
-          canCaptureAKnight(i - 1, j + 2, c, currentState) ||
-          canCaptureAKnight(i - 1, j - 2, c, currentState) ||
-          canCaptureAKnight(i - 2, j + 1, c, currentState) ||
-          canCaptureAKnight(i - 2, j - 1, c, currentState));
-}
-
-bool rookOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
-  for (int k = i + 1; k < 8; k++) {
-    if (isEmpty(k, j, currentState)) {
-      continue;
-    }
-    if (canCaptureARookOrQueen(k, j, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-  for (int k = i - 1; k >= 0; k--) {
-    if (isEmpty(k, j, currentState)) {
-      continue;
-    }
-    if (canCaptureARookOrQueen(k, j, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-  for (int k = j - 1; k >= 0; k--) {
-    if (isEmpty(i, k, currentState)) {
-      continue;
-    }
-    if (canCaptureARookOrQueen(i, k, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-
-  for (int k = j + 1; k < 8; k++) {
-    if (isEmpty(i, k, currentState)) {
-      continue;
-    }
-    if (canCaptureARookOrQueen(i, k, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-  return false;
-}
-
-bool bishopOrQueenCaptures(int i, int j, Colours c, gameState currentState) {
-  for (int k = 1; (i + k <= 7 && j + k <= 7); k++) {
-    if (isEmpty(i + k, j + k, currentState)) {
-      continue;
-    }
-    if (canCaptureABishopOrQueen(i + k, j + k, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-
-  for (int k = 1; (i - k >= 0 && j + k <= 7); k++) {
-    if (isEmpty(i - k, j + k, currentState)) {
-      continue;
-    }
-    if (canCaptureABishopOrQueen(i - k, j + k, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-
-  for (int k = 1; (i - k >= 0 && j - k >= 0); k++) {
-    if (isEmpty(i - k, j - k, currentState)) {
-      continue;
-    }
-    if (canCaptureABishopOrQueen(i - k, j - k, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-  for (int k = 1; (i + k <= 7 && j - k >= 0); k++) {
-    if (isEmpty(i + k, j - k, currentState)) {
-      continue;
-    }
-    if (canCaptureABishopOrQueen(i + k, j - k, c, currentState)) {
-      return true;
-    }
-    break;
-  }
-
-  return false;
-}
-
-bool isInCheck(int i, int j, Colours currentColour, gameState currentState) {
-  if (pawnCaptures(i, j, currentColour, currentState)) {
-    // cout << "pawn captures\n";
-    return true;
-  }
-  if (knightCaptures(i, j, currentColour, currentState)) {
-    return true;
-    // cout << "knight captures\n";
-  }
-  if (rookOrQueenCaptures(i, j, currentColour, currentState)) {
-    // cout << "rook or queen captures\n";
-    return true;
-  }
-  if (bishopOrQueenCaptures(i, j, currentColour, currentState)) {
-    // cout << "bishop  or queen captures\n";
-    return true;
-  }
-  return false;
-}
-
-vector<Turn> getCastlingTurns(Colours c, gameState currentState) {
-  vector<Turn> toLocations;
-
-  if (c == Colours::white) {
-    if (currentState.wCastle) {
-      if (currentState.castling.wQueenSide == true &&
-          currentState.board[0][0] == Pieces::wRook &&
-          currentState.board[0][1] == Pieces::empty &&
-          currentState.board[0][2] == Pieces::empty &&
-          currentState.board[0][3] == Pieces::empty) {
-        if (!isInCheck(0, 2, c, currentState) &&
-            !isInCheck(0, 3, c, currentState) &&
-            // !isInCheck(0, 1, c, currentState) &&
-            !isInCheck(0, 4, c, currentState)) {
-          toLocations.push_back({{0, 4}, {0, 2}, Pieces::empty});
-        }
-      }
-      if (currentState.castling.wkingSide == true &&
-          currentState.board[0][7] == Pieces::wRook &&
-          currentState.board[0][5] == Pieces::empty &&
-          currentState.board[0][6] == Pieces::empty) {
-        if (!isInCheck(0, 5, c, currentState) &&
-            !isInCheck(0, 6, c, currentState) &&
-            !isInCheck(0, 4, c, currentState)) {
-          toLocations.push_back({{0, 4}, {0, 6}, Pieces::empty});
-        }
-      }
+Square getEnpassantSq(gameState& currentState, int i, int j,
+                      bool isWhitesTurn) {
+  Square enpassantSq = {-1, -1};
+  if (isWhitesTurn) {
+    if ((currentState.board[i][j + 1] == Pieces::bPawn) ||
+        currentState.board[i][j - 1] == Pieces::bPawn) {
+      enpassantSq = {i - 1, j};
     }
   } else {
-    if (currentState.bCastle) {
-      if (currentState.castling.bQueenSide == true &&
-          currentState.board[7][0] == Pieces::bRook &&
-          currentState.board[7][1] == Pieces::empty &&
-          currentState.board[7][2] == Pieces::empty &&
-          currentState.board[7][3] == Pieces::empty) {
-        if (!isInCheck(7, 2, c, currentState) &&
-            !isInCheck(7, 3, c, currentState) &&
-            // !isInCheck(7, 1, c, currentState) &&
-            !isInCheck(7, 4, c, currentState)) {
-          toLocations.push_back({{7, 4}, {7, 2}, Pieces::empty});
-        }
-      }
-      if (currentState.castling.bKingSide == true &&
-          currentState.board[7][7] == Pieces::bRook &&
-          currentState.board[7][5] == Pieces::empty &&
-          currentState.board[7][6] == Pieces::empty) {
-        if (!isInCheck(7, 5, c, currentState) &&
-            !isInCheck(7, 6, c, currentState) &&
-            !isInCheck(7, 4, c, currentState)) {
-          toLocations.push_back({{7, 4}, {7, 6}, Pieces::empty});
-        }
-      }
+    if ((currentState.board[i][j + 1] == Pieces::wPawn) ||
+        currentState.board[i][j - 1] == Pieces::wPawn) {
+      enpassantSq = {i + 1, j};
     }
   }
-  return toLocations;
+  return enpassantSq;
 }
 
-vector<Turn> getPseudoCorrect(Colours colour, gameState currentState) {
-  vector<Turn> toLocations;
-  for (int i = 0; i < 8; i++) {
-    for (int j = 0; j < 8; j++) {
-      if (isEmpty(i, j, currentState) ||
-          (colour == Colours::white && !isWhite(i, j, currentState)) ||
-          (colour == Colours::black && !isBlack(i, j, currentState))) {
-        continue;
+bool canWKingLand(gameState& currentState, int i, int j,
+                  Square otherKingLocation) {
+  return ((isEmpty(i, j, currentState) || isBlack(i, j, currentState)) &&
+          getDistance(i, j, otherKingLocation.first, otherKingLocation.second) >
+              1 &&
+          !knightCaptures(currentState, i, j, true) &&
+          !pawnCaptures(currentState, i, j, true));
+}
+
+bool canBKingLand(gameState& currentState, int i, int j,
+                  Square otherKingLocation) {
+  return ((isEmpty(i, j, currentState) || isWhite(i, j, currentState)) &&
+          getDistance(i, j, otherKingLocation.first, otherKingLocation.second) >
+              1 &&
+          !knightCaptures(currentState, i, j, false) &&
+          !pawnCaptures(currentState, i, j, false));
+}
+
+void kingToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                     Turns& toLocations, int& n) {
+  auto otherKingLocation = getKingLocation(currentState, !isWhitesTurn);
+  if (isWhitesTurn) {
+    if (canWKingLand(currentState, i - 1, j - 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i - 1, j - 1}};
+    }
+    if (canWKingLand(currentState, i - 1, j + 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i - 1, j + 1}};
+    }
+    if (canWKingLand(currentState, i + 1, j - 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i + 1, j - 1}};
+    }
+    if (canWKingLand(currentState, i + 1, j + 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i + 1, j + 1}};
+    }
+    if (canWKingLand(currentState, i, j - 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i, j - 1}};
+    }
+    if (canWKingLand(currentState, i, j + 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i, j + 1}};
+    }
+    if (canWKingLand(currentState, i - 1, j, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i - 1, j}};
+    }
+    if (canWKingLand(currentState, i + 1, j, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i + 1, j}};
+    }
+  } else {
+    if (canBKingLand(currentState, i - 1, j - 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i - 1, j - 1}};
+    }
+    if (canBKingLand(currentState, i - 1, j + 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i - 1, j + 1}};
+    }
+    if (canBKingLand(currentState, i + 1, j - 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i + 1, j - 1}};
+    }
+    if (canBKingLand(currentState, i + 1, j + 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i + 1, j + 1}};
+    }
+    if (canBKingLand(currentState, i, j - 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i, j - 1}};
+    }
+    if (canBKingLand(currentState, i, j + 1, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i, j + 1}};
+    }
+    if (canBKingLand(currentState, i - 1, j, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i - 1, j}};
+    }
+    if (canBKingLand(currentState, i + 1, j, otherKingLocation)) {
+      toLocations[n++] = {{i, j}, {i + 1, j}};
+    }
+  }
+}
+
+void pawnToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                     Turns& toLocations, int& n) {
+  if (isWhitesTurn) {
+    if (isEmpty(i + 1, j, currentState)) {
+      if (i != 8) {
+        toLocations[n++] = {{i, j}, {i + 1, j}};
+      } else {
+        toLocations[n++] = {{i, j}, {i + 1, j}, Pieces::wKnight};
+        toLocations[n++] = {{i, j}, {i + 1, j}, Pieces::wBishop};
+        toLocations[n++] = {{i, j}, {i + 1, j}, Pieces::wRook};
+        toLocations[n++] = {{i, j}, {i + 1, j}, Pieces::wQueen};
       }
+      if (i == 3 && isEmpty(i + 2, j, currentState)) {
+        Square enpassantSq =
+            getEnpassantSq(currentState, i + 2, j, isWhitesTurn);
+        toLocations[n++] = {
+            {i, j}, {i + 2, j}, Pieces::empty, false, enpassantSq};
+      }
+    }
+    if (isBlack(i + 1, j + 1, currentState)) {
+      if (i != 8) {
+        toLocations[n++] = {{i, j}, {i + 1, j + 1}};
+      } else {
+        toLocations[n++] = {{i, j}, {i + 1, j + 1}, Pieces::wKnight};
+        toLocations[n++] = {{i, j}, {i + 1, j + 1}, Pieces::wBishop};
+        toLocations[n++] = {{i, j}, {i + 1, j + 1}, Pieces::wRook};
+        toLocations[n++] = {{i, j}, {i + 1, j + 1}, Pieces::wQueen};
+      }
+    }
+    if (canPawnLandAndCaptureEnPassant(currentState, i + 1, j + 1)) {
+      toLocations[n++] = {{i, j}, {i + 1, j + 1}, Pieces::empty,
+                          false,  {-1, -1},       true};
+    }
+    if (isBlack(i + 1, j - 1, currentState)) {
+      if (i != 8) {
+        toLocations[n++] = {{i, j}, {i + 1, j - 1}};
+      } else {
+        toLocations[n++] = {{i, j}, {i + 1, j - 1}, Pieces::wKnight};
+        toLocations[n++] = {{i, j}, {i + 1, j - 1}, Pieces::wBishop};
+        toLocations[n++] = {{i, j}, {i + 1, j - 1}, Pieces::wRook};
+        toLocations[n++] = {{i, j}, {i + 1, j - 1}, Pieces::wQueen};
+      }
+    }
+    if (canPawnLandAndCaptureEnPassant(currentState, i + 1, j - 1)) {
+      toLocations[n++] = {{i, j}, {i + 1, j - 1}, Pieces::empty,
+                          false,  {-1, -1},       true};
+    }
+  } else {
+    if (isEmpty(i - 1, j, currentState)) {
+      if (i != 3) {
+        toLocations[n++] = {{i, j}, {i - 1, j}};
+      } else {
+        toLocations[n++] = {{i, j}, {i - 1, j}, Pieces::bKnight};
+        toLocations[n++] = {{i, j}, {i - 1, j}, Pieces::bBishop};
+        toLocations[n++] = {{i, j}, {i - 1, j}, Pieces::bRook};
+        toLocations[n++] = {{i, j}, {i - 1, j}, Pieces::bQueen};
+      }
+      if (i == 8 && isEmpty(i - 2, j, currentState)) {
+        Square enpassantSq =
+            getEnpassantSq(currentState, i - 2, j, isWhitesTurn);
+        toLocations[n++] = {
+            {i, j}, {i - 2, j}, Pieces::empty, false, enpassantSq};
+      }
+    }
+    if (isWhite(i - 1, j + 1, currentState)) {
+      if (i != 3) {
+        toLocations[n++] = {{i, j}, {i - 1, j + 1}};
+      } else {
+        toLocations[n++] = {{i, j}, {i - 1, j + 1}, Pieces::bKnight};
+        toLocations[n++] = {{i, j}, {i - 1, j + 1}, Pieces::bBishop};
+        toLocations[n++] = {{i, j}, {i - 1, j + 1}, Pieces::bRook};
+        toLocations[n++] = {{i, j}, {i - 1, j + 1}, Pieces::bQueen};
+      }
+    }
+    if (canPawnLandAndCaptureEnPassant(currentState, i - 1, j + 1)) {
+      toLocations[n++] = {{i, j}, {i - 1, j + 1}, Pieces::empty,
+                          false,  {-1, -1},       true};
+    }
+    if (isWhite(i - 1, j - 1, currentState)) {
+      if (i != 3) {
+        toLocations[n++] = {{i, j}, {i - 1, j - 1}};
+      } else {
+        toLocations[n++] = {{i, j}, {i - 1, j - 1}, Pieces::bKnight};
+        toLocations[n++] = {{i, j}, {i - 1, j - 1}, Pieces::bBishop};
+        toLocations[n++] = {{i, j}, {i - 1, j - 1}, Pieces::bRook};
+        toLocations[n++] = {{i, j}, {i - 1, j - 1}, Pieces::bQueen};
+      }
+    }
+    if (canPawnLandAndCaptureEnPassant(currentState, i - 1, j - 1)) {
+      toLocations[n++] = {{i, j}, {i - 1, j - 1}, Pieces::empty,
+                          false,  {-1, -1},       true};
+    }
+  }
+}
+
+void knightToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                       Turns& toLocations, int& n) {
+  if (isWhitesTurn) {
+    if (canWKnightLand(currentState, i - 1, j - 2)) {
+      toLocations[n++] = {{i, j}, {i - 1, j - 2}};
+    }
+    if (canWKnightLand(currentState, i - 1, j + 2)) {
+      toLocations[n++] = {{i, j}, {i - 1, j + 2}};
+    }
+    if (canWKnightLand(currentState, i - 2, j - 1)) {
+      toLocations[n++] = {{i, j}, {i - 2, j - 1}};
+    }
+    if (canWKnightLand(currentState, i - 2, j + 1)) {
+      toLocations[n++] = {{i, j}, {i - 2, j + 1}};
+    }
+    if (canWKnightLand(currentState, i + 1, j - 2)) {
+      toLocations[n++] = {{i, j}, {i + 1, j - 2}};
+    }
+    if (canWKnightLand(currentState, i + 1, j + 2)) {
+      toLocations[n++] = {{i, j}, {i + 1, j + 2}};
+    }
+    if (canWKnightLand(currentState, i + 2, j - 1)) {
+      toLocations[n++] = {{i, j}, {i + 2, j - 1}};
+    }
+    if (canWKnightLand(currentState, i + 2, j + 1)) {
+      toLocations[n++] = {{i, j}, {i + 2, j + 1}};
+    }
+  } else {
+    if (canBKnightLand(currentState, i - 1, j - 2)) {
+      toLocations[n++] = {{i, j}, {i - 1, j - 2}};
+    }
+    if (canBKnightLand(currentState, i - 1, j + 2)) {
+      toLocations[n++] = {{i, j}, {i - 1, j + 2}};
+    }
+    if (canBKnightLand(currentState, i - 2, j - 1)) {
+      toLocations[n++] = {{i, j}, {i - 2, j - 1}};
+    }
+    if (canBKnightLand(currentState, i - 2, j + 1)) {
+      toLocations[n++] = {{i, j}, {i - 2, j + 1}};
+    }
+    if (canBKnightLand(currentState, i + 1, j - 2)) {
+      toLocations[n++] = {{i, j}, {i + 1, j - 2}};
+    }
+    if (canBKnightLand(currentState, i + 1, j + 2)) {
+      toLocations[n++] = {{i, j}, {i + 1, j + 2}};
+    }
+    if (canBKnightLand(currentState, i + 2, j - 1)) {
+      toLocations[n++] = {{i, j}, {i + 2, j - 1}};
+    }
+    if (canBKnightLand(currentState, i + 2, j + 1)) {
+      toLocations[n++] = {{i, j}, {i + 2, j + 1}};
+    }
+  }
+}
+void bishopToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                       Turns& toLocations, int& n) {
+  if (isWhitesTurn) {
+    for (int k = 1;; k++) {
+      if (isWhiteOrInvalid(currentState, i + k, j + k)) break;
+      toLocations[n++] = {{i, j}, {i + k, j + k}};
+      if (isBlack(i + k, j + k, currentState)) break;
+    }
+    for (int k = 1;; k++) {
+      if (isWhiteOrInvalid(currentState, i - k, j + k)) break;
+      toLocations[n++] = {{i, j}, {i - k, j + k}};
+      if (isBlack(i - k, j + k, currentState)) break;
+    }
+    for (int k = 1;; k++) {
+      if (isWhiteOrInvalid(currentState, i + k, j - k)) break;
+      toLocations[n++] = {{i, j}, {i + k, j - k}};
+      if (isBlack(i + k, j - k, currentState)) break;
+    }
+    for (int k = 1;; k++) {
+      if (isWhiteOrInvalid(currentState, i - k, j - k)) break;
+      toLocations[n++] = {{i, j}, {i - k, j - k}};
+      if (isBlack(i - k, j - k, currentState)) break;
+    }
+  } else {
+    for (int k = 1;; k++) {
+      if (isBlackOrInvalid(currentState, i + k, j + k)) break;
+      toLocations[n++] = {{i, j}, {i + k, j + k}};
+      if (isWhite(i + k, j + k, currentState)) break;
+    }
+    for (int k = 1;; k++) {
+      if (isBlackOrInvalid(currentState, i - k, j + k)) break;
+      toLocations[n++] = {{i, j}, {i - k, j + k}};
+      if (isWhite(i - k, j + k, currentState)) break;
+    }
+    for (int k = 1;; k++) {
+      if (isBlackOrInvalid(currentState, i + k, j - k)) break;
+      toLocations[n++] = {{i, j}, {i + k, j - k}};
+      if (isWhite(i + k, j - k, currentState)) break;
+    }
+    for (int k = 1;; k++) {
+      if (isBlackOrInvalid(currentState, i - k, j - k)) break;
+      toLocations[n++] = {{i, j}, {i - k, j - k}};
+      if (isWhite(i - k, j - k, currentState)) break;
+    }
+  }
+}
+
+void rookToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                     Turns& toLocations, int& n) {
+  if (isWhitesTurn) {
+    for (int k = i - 1;; k--) {
+      if (isWhiteOrInvalid(currentState, k, j)) break;
+      toLocations[n++] = {{i, j}, {k, j}};
+      if (isBlack(k, j, currentState)) break;
+    }
+    for (int k = i + 1;; k++) {
+      if (isWhiteOrInvalid(currentState, k, j)) break;
+      toLocations[n++] = {{i, j}, {k, j}};
+      if (isBlack(k, j, currentState)) break;
+    }
+    for (int k = j - 1;; k--) {
+      if (isWhiteOrInvalid(currentState, i, k)) break;
+      toLocations[n++] = {{i, j}, {i, k}};
+      if (isBlack(i, k, currentState)) break;
+    }
+    for (int k = j + 1;; k++) {
+      if (isWhiteOrInvalid(currentState, i, k)) break;
+      toLocations[n++] = {{i, j}, {i, k}};
+      if (isBlack(i, k, currentState)) break;
+    }
+  } else {
+    for (int k = i - 1;; k--) {
+      if (isBlackOrInvalid(currentState, k, j)) break;
+      toLocations[n++] = {{i, j}, {k, j}};
+      if (isWhite(k, j, currentState)) break;
+    }
+    for (int k = i + 1;; k++) {
+      if (isBlackOrInvalid(currentState, k, j)) break;
+      toLocations[n++] = {{i, j}, {k, j}};
+      if (isWhite(k, j, currentState)) break;
+    }
+    for (int k = j - 1;; k--) {
+      if (isBlackOrInvalid(currentState, i, k)) break;
+      toLocations[n++] = {{i, j}, {i, k}};
+      if (isWhite(i, k, currentState)) break;
+    }
+    for (int k = j + 1;; k++) {
+      if (isBlackOrInvalid(currentState, i, k)) break;
+      toLocations[n++] = {{i, j}, {i, k}};
+      if (isWhite(i, k, currentState)) break;
+    }
+  }
+}
+
+void queenToLocations(gameState& currentState, int i, int j, bool isWhitesTurn,
+                      Turns& toLocations, int& n) {
+  rookToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
+  bishopToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
+}
+
+bool pawnCaptures(gameState& currentState, int i, int j, bool isWhitesTurn) {
+  if (isWhitesTurn) {
+    if (currentState.board[i + 1][j + 1] & Pieces::bPawn) return true;
+    if (currentState.board[i + 1][j - 1] & Pieces::bPawn) return true;
+  } else {
+    if (currentState.board[i - 1][j + 1] & Pieces::wPawn) return true;
+    if (currentState.board[i - 1][j - 1] & Pieces::wPawn) return true;
+  }
+  return false;
+}
+
+bool knightCaptures(gameState& currentState, int i, int j, bool isWhitesTurn) {
+  if (isWhitesTurn) {
+    return (currentState.board[i - 1][j - 2] & Pieces::bKnight) ||
+           (currentState.board[i - 1][j + 2] & Pieces::bKnight) ||
+           (currentState.board[i - 2][j - 1] & Pieces::bKnight) ||
+           (currentState.board[i - 2][j + 1] & Pieces::bKnight) ||
+           (currentState.board[i + 1][j - 2] & Pieces::bKnight) ||
+           (currentState.board[i + 1][j + 2] & Pieces::bKnight) ||
+           (currentState.board[i + 2][j - 1] & Pieces::bKnight) ||
+           (currentState.board[i + 2][j + 1] & Pieces::bKnight);
+  } else {
+    return (currentState.board[i - 1][j - 2] & Pieces::wKnight) ||
+           (currentState.board[i - 1][j + 2] & Pieces::wKnight) ||
+           (currentState.board[i - 2][j - 1] & Pieces::wKnight) ||
+           (currentState.board[i - 2][j + 1] & Pieces::wKnight) ||
+           (currentState.board[i + 1][j - 2] & Pieces::wKnight) ||
+           (currentState.board[i + 1][j + 2] & Pieces::wKnight) ||
+           (currentState.board[i + 2][j - 1] & Pieces::wKnight) ||
+           (currentState.board[i + 2][j + 1] & Pieces::wKnight);
+  }
+}
+
+bool rookOrQueenCaptures(gameState& currentState, int i, int j,
+                         bool isWhitesTurn) {
+  if (isWhitesTurn) {
+    for (int k = i - 1;; k--) {
+      if (isEmpty(k, j, currentState)) continue;
+      if (currentState.board[k][j] & (Pieces::bRook | Pieces::bQueen))
+        return true;
+      break;
+    }
+    for (int k = i + 1;; k++) {
+      if (isEmpty(k, j, currentState)) continue;
+      if (currentState.board[k][j] & (Pieces::bRook | Pieces::bQueen))
+        return true;
+      break;
+    }
+    for (int k = j - 1;; k--) {
+      if (isEmpty(i, k, currentState)) continue;
+      if (currentState.board[i][k] & (Pieces::bRook | Pieces::bQueen))
+        return true;
+      break;
+    }
+    for (int k = j + 1;; k++) {
+      if (isEmpty(i, k, currentState)) continue;
+      if (currentState.board[i][k] & (Pieces::bRook | Pieces::bQueen))
+        return true;
+      break;
+    }
+  } else {
+    for (int k = i - 1;; k--) {
+      if (isEmpty(k, j, currentState)) continue;
+      if (currentState.board[k][j] & (Pieces::wRook | Pieces::wQueen))
+        return true;
+      break;
+    }
+    for (int k = i + 1;; k++) {
+      if (isEmpty(k, j, currentState)) continue;
+      if (currentState.board[k][j] & (Pieces::wRook | Pieces::wQueen))
+        return true;
+      break;
+    }
+    for (int k = j - 1;; k--) {
+      if (isEmpty(i, k, currentState)) continue;
+      if (currentState.board[i][k] & (Pieces::wRook | Pieces::wQueen))
+        return true;
+      break;
+    }
+    for (int k = j + 1;; k++) {
+      if (isEmpty(i, k, currentState)) continue;
+      if (currentState.board[i][k] & (Pieces::wRook | Pieces::wQueen))
+        return true;
+      break;
+    }
+  }
+  return false;
+}
+
+bool bishopOrQueenCaptures(gameState& currentState, int i, int j,
+                           bool isWhitesTurn) {
+  if (isWhitesTurn) {
+    for (int k = 1;; k++) {
+      if (isEmpty(i + k, j + k, currentState)) continue;
+      if (currentState.board[i + k][j + k] & (Pieces::bBishop | Pieces::bQueen))
+        return true;
+      break;
+    }
+    for (int k = 1;; k++) {
+      if (isEmpty(i - k, j + k, currentState)) continue;
+      if (currentState.board[i - k][j + k] & (Pieces::bBishop | Pieces::bQueen))
+        return true;
+      break;
+    }
+    for (int k = 1;; k++) {
+      if (isEmpty(i + k, j - k, currentState)) continue;
+      if (currentState.board[i + k][j - k] & (Pieces::bBishop | Pieces::bQueen))
+        return true;
+      break;
+    }
+    for (int k = 1;; k++) {
+      if (isEmpty(i - k, j - k, currentState)) continue;
+      if (currentState.board[i - k][j - k] & (Pieces::bBishop | Pieces::bQueen))
+        return true;
+      break;
+    }
+  } else {
+    for (int k = 1;; k++) {
+      if (isEmpty(i + k, j + k, currentState)) continue;
+      if (currentState.board[i + k][j + k] & (Pieces::wBishop | Pieces::wQueen))
+        return true;
+      break;
+    }
+    for (int k = 1;; k++) {
+      if (isEmpty(i - k, j + k, currentState)) continue;
+      if (currentState.board[i - k][j + k] & (Pieces::wBishop | Pieces::wQueen))
+        return true;
+      break;
+    }
+    for (int k = 1;; k++) {
+      if (isEmpty(i + k, j - k, currentState)) continue;
+      if (currentState.board[i + k][j - k] & (Pieces::wBishop | Pieces::wQueen))
+        return true;
+      break;
+    }
+    for (int k = 1;; k++) {
+      if (isEmpty(i - k, j - k, currentState)) continue;
+      if (currentState.board[i - k][j - k] & (Pieces::wBishop | Pieces::wQueen))
+        return true;
+      break;
+    }
+  }
+  return false;
+}
+bool isInCheck(gameState& currentState, int i, int j, bool isWhitesTurn,
+               bool includeKnightCapturesValidation,
+               bool includePawnCapturesValidation) {
+  if (includePawnCapturesValidation &&
+      pawnCaptures(currentState, i, j, isWhitesTurn)) {
+    return true;
+  }
+  if (includeKnightCapturesValidation &&
+      knightCaptures(currentState, i, j, isWhitesTurn)) {
+    return true;
+  }
+  if (rookOrQueenCaptures(currentState, i, j, isWhitesTurn)) {
+    return true;
+  }
+  if (bishopOrQueenCaptures(currentState, i, j, isWhitesTurn)) {
+    return true;
+  }
+  return false;
+}
+
+void getCastlingTurns(gameState& currentState, Turns& toLocations, int& n) {
+  bool isWhitesTurn = currentState.isWhitesTurn;
+  if (isWhitesTurn) {
+    if (currentState.castling.wkingSide &&
+        currentState.board[2][7] == Pieces::empty &&
+        currentState.board[2][8] == Pieces::empty &&
+        currentState.board[2][9] == Pieces::wRook &&
+        !isInCheck(currentState, 2, 6, isWhitesTurn) &&
+        !isInCheck(currentState, 2, 7, isWhitesTurn) &&
+        !isInCheck(currentState, 2, 8, isWhitesTurn)) {
+      toLocations[n++] = {{2, 6}, {2, 8}, Pieces::empty, true};
+    }
+    if (currentState.castling.wQueenSide &&
+        currentState.board[2][5] == Pieces::empty &&
+        currentState.board[2][4] == Pieces::empty &&
+        currentState.board[2][3] == Pieces::empty &&
+        currentState.board[2][2] == Pieces::wRook &&
+        !isInCheck(currentState, 2, 6, isWhitesTurn) &&
+        !isInCheck(currentState, 2, 5, isWhitesTurn) &&
+        !isInCheck(currentState, 2, 4, isWhitesTurn)) {
+      toLocations[n++] = {{2, 6}, {2, 4}, Pieces::empty, true};
+    }
+  } else {
+    if (currentState.castling.bKingSide &&
+        currentState.board[9][7] == Pieces::empty &&
+        currentState.board[9][8] == Pieces::empty &&
+        currentState.board[9][9] == Pieces::bRook &&
+        !isInCheck(currentState, 9, 6, isWhitesTurn) &&
+        !isInCheck(currentState, 9, 7, isWhitesTurn) &&
+        !isInCheck(currentState, 9, 8, isWhitesTurn)) {
+      toLocations[n++] = {{9, 6}, {9, 8}, Pieces::empty, true};
+    }
+    if (currentState.castling.bQueenSide &&
+        currentState.board[9][5] == Pieces::empty &&
+        currentState.board[9][4] == Pieces::empty &&
+        currentState.board[9][3] == Pieces::empty &&
+        currentState.board[9][2] == Pieces::bRook &&
+        !isInCheck(currentState, 9, 6, isWhitesTurn) &&
+        !isInCheck(currentState, 9, 5, isWhitesTurn) &&
+        !isInCheck(currentState, 9, 4, isWhitesTurn)) {
+      toLocations[n++] = {{9, 6}, {9, 4}, Pieces::empty, true};
+    }
+  }
+}
+
+void getPseudoCorrect(gameState& currentState, Turns& toLocations, int& n) {
+  bool isWhitesTurn = currentState.isWhitesTurn;
+  n = 0;
+
+  for (int i = 2; i < 10; i++) {
+    for (int j = 2; j < 10; j++) {
+      if (isWhitesTurn && !isWhite(i, j, currentState)) continue;
+      if (!isWhitesTurn && !isBlack(i, j, currentState)) continue;
+
       if (isPawn(i, j, currentState)) {
-        auto pawnLocations = pawnToLocations(i, j, colour, currentState);
-        toLocations.insert(toLocations.end(), pawnLocations.begin(),
-                           pawnLocations.end());
+        pawnToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
       }
       if (isKnight(i, j, currentState)) {
-        auto knightLocations = knightToLocations(i, j, colour, currentState);
-        toLocations.insert(toLocations.end(), knightLocations.begin(),
-                           knightLocations.end());
+        knightToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
       }
       if (isBishop(i, j, currentState)) {
-        auto bishopLocations = bishopToLocations(i, j, colour, currentState);
-        toLocations.insert(toLocations.end(), bishopLocations.begin(),
-                           bishopLocations.end());
+        bishopToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
       }
       if (isRook(i, j, currentState)) {
-        auto rookLocations = rookToLocations(i, j, colour, currentState);
-        toLocations.insert(toLocations.end(), rookLocations.begin(),
-                           rookLocations.end());
+        rookToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
       }
       if (isQueen(i, j, currentState)) {
-        auto queenLocations = queenToLocations(i, j, colour, currentState);
-        toLocations.insert(toLocations.end(), queenLocations.begin(),
-                           queenLocations.end());
+        queenToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
       }
       if (isKing(i, j, currentState)) {
-        auto kingLocations = kingToLocations(i, j, colour, currentState);
-        toLocations.insert(toLocations.end(), kingLocations.begin(),
-                           kingLocations.end());
+        kingToLocations(currentState, i, j, isWhitesTurn, toLocations, n);
       }
     }
   }
-  auto castlingTurns = getCastlingTurns(colour, currentState);
-  toLocations.insert(toLocations.end(), castlingTurns.begin(),
-                     castlingTurns.end());
-  return toLocations;
+  getCastlingTurns(currentState, toLocations, n);
 }
+void applyTurn(gameState& currentState, Turn& turn) {
+  Square from = turn.from;
+  Square to = turn.to;
 
-void applyTurn(Turn turn, gameState& currentStat) {
-  // Get moving piece and clear the from square.
-  Pieces piece = currentStat.board[turn.from.first][turn.from.second];
-  int i = turn.to.first, j = turn.to.second;
-  currentStat.board[turn.from.first][turn.from.second] = Pieces::empty;
+  turn.capturedPiece = currentState.board[to.first][to.second];
+  currentState.board[to.first][to.second] =
+      currentState.board[from.first][from.second];
 
-  // --- En Passant setup (for pawn double move) ---
-  if (piece == Pieces::wPawn && turn.from.first == 1 && turn.to.first == 3) {
-    // White pawn moved two squares: en passant target is square in between.
-    currentStat.enpassantSq = {2, turn.from.second};
-    currentStat.canEnpassant = true;
-  } else if (piece == Pieces::bPawn && turn.from.first == 6 &&
-             turn.to.first == 4) {
-    currentStat.enpassantSq = {5, turn.from.second};
-    currentStat.canEnpassant = true;
-  } else {
-    currentStat.enpassantSq = {-1, -1};
-    currentStat.canEnpassant = false;
+  // Update king locations
+  if (currentState.board[to.first][to.second] == Pieces::wKing) {
+    currentState.wKingLocation.first = to.first;
+    currentState.wKingLocation.second = to.second;
+  } else if (currentState.board[to.first][to.second] == Pieces::bKing) {
+    currentState.bKingLocation.first = to.first;
+    currentState.bKingLocation.second = to.second;
   }
 
-  // --- Handle en passant capture ---
-  // If a pawn moves diagonally into an empty square, remove the opponent pawn.
-  if ((piece == Pieces::wPawn || piece == Pieces::bPawn) &&
-      abs(turn.to.second - turn.from.second) == 1 &&
-      currentStat.board[i][j] == Pieces::empty) {
-    if (piece == Pieces::wPawn) {
-      currentStat.board[i - 1][j] = Pieces::empty;
-    } else {
-      currentStat.board[i + 1][j] = Pieces::empty;
-    }
+  currentState.board[from.first][from.second] = Pieces::empty;
+
+  if (turn.promotionPiece != Pieces::empty) {
+    currentState.board[to.first][to.second] = turn.promotionPiece;
   }
 
-  // --- Place the moved (or promoted) piece ---
-  currentStat.board[i][j] =
-      (turn.promotionPiece == Pieces::empty) ? piece : turn.promotionPiece;
+  currentState.enpassantSq = turn.enPassantSq;
 
-  // --- Handle castling ---
-  // If a king moves two squares horizontally, it is a castling move.
-  if ((piece == Pieces::wKing || piece == Pieces::bKing) &&
-      abs(turn.to.second - turn.from.second) == 2) {
-    if (turn.to.second == 2) {
-      // Queen-side castling: move rook from file 0 to file 3.
-      currentStat.board[i][3] = currentStat.board[i][0];
-      currentStat.board[i][0] = Pieces::empty;
-    } else if (turn.to.second == 6) {
-      // King-side castling: move rook from file 7 to file 5.
-      currentStat.board[i][5] = currentStat.board[i][7];
-      currentStat.board[i][7] = Pieces::empty;
+  if (turn.enPassant) {
+    currentState.board[from.first][to.second] = Pieces::empty;
+  }
+
+  if (from.first == 2) {     // White pieces
+    if (from.second == 6) {  // King
+      currentState.castling.wkingSide = false;
+      currentState.castling.wQueenSide = false;
     }
-    // Update castling rights for the moving king.
-    if (i == 0) {
-      currentStat.castling.wQueenSide = false;
-      currentStat.castling.wkingSide = false;
-    } else if (i == 7) {
-      currentStat.castling.bQueenSide = false;
-      currentStat.castling.bKingSide = false;
+    if (from.second == 2) {  // Queenside rook
+      currentState.castling.wQueenSide = false;
+    }
+    if (from.second == 9) {  // Kingside rook
+      currentState.castling.wkingSide = false;
+    }
+  }
+  if (from.first == 9) {     // Black pieces
+    if (from.second == 6) {  // King
+      currentState.castling.bKingSide = false;
+      currentState.castling.bQueenSide = false;
+    }
+    if (from.second == 2) {  // Queenside rook
+      currentState.castling.bQueenSide = false;
+    }
+    if (from.second == 9) {  // Kingside rook
+      currentState.castling.bKingSide = false;
     }
   }
 
-  // --- Update castling rights based on piece movement ---
-  if (piece == Pieces::wKing) {
-    currentStat.castling.wQueenSide = false;
-    currentStat.castling.wkingSide = false;
-  } else if (piece == Pieces::bKing) {
-    currentStat.castling.bQueenSide = false;
-    currentStat.castling.bKingSide = false;
-  } else if (piece == Pieces::wRook) {
-    if (turn.from.first == 0 && turn.from.second == 0) {
-      currentStat.castling.wQueenSide = false;
-    } else if (turn.from.first == 0 && turn.from.second == 7) {
-      currentStat.castling.wkingSide = false;
-    }
-  } else if (piece == Pieces::bRook) {
-    if (turn.from.first == 7 && turn.from.second == 0) {
-      currentStat.castling.bQueenSide = false;
-    } else if (turn.from.first == 7 && turn.from.second == 7) {
-      currentStat.castling.bKingSide = false;
+  // Handle castling
+  if (turn.castling) {
+    if (from.first == 2) {   // White castling
+      if (to.second == 8) {  // Kingside
+        currentState.board[2][7] = Pieces::wRook;
+        currentState.board[2][9] = Pieces::empty;
+      } else if (to.second == 4) {  // Queenside
+        currentState.board[2][5] = Pieces::wRook;
+        currentState.board[2][2] = Pieces::empty;
+      }
+    } else {                 // Black castling
+      if (to.second == 8) {  // Kingside
+        currentState.board[9][7] = Pieces::bRook;
+        currentState.board[9][9] = Pieces::empty;
+      } else if (to.second == 4) {  // Queenside
+        currentState.board[9][5] = Pieces::bRook;
+        currentState.board[9][2] = Pieces::empty;
+      }
     }
   }
 
-  // --- Update current colour ---
-  currentStat.currentColour = (currentStat.currentColour == Colours::white)
-                                  ? Colours::black
-                                  : Colours::white;
+  currentState.isWhitesTurn = !currentState.isWhitesTurn;
 }
+void generateTurns(gameState& currentState, Turns& correctToLocations, int& m) {
+  bool isWhitesTurn = currentState.isWhitesTurn;
+  Turns toLocations;
+  int n = 0;
+  getPseudoCorrect(currentState, toLocations, n);
 
-vector<Turn> generateTurns(gameState& currentStat) {
-  Colours c = currentStat.currentColour;
-  vector<Turn> turns;
+  m = 0;
+  for (int i = 0; i < n; i++) {
+    gameState origState = currentState;
+    applyTurn(currentState, toLocations[i]);
 
-  for (auto& turn : getPseudoCorrect(c, currentStat)) {
-    gameState originalState = currentStat;
-    applyTurn(turn, currentStat);
-    Pieces king = c == Colours::white ? Pieces::wKing : Pieces::bKing;
-    Square kingLocation = getPieceLocation(king, currentStat);
-    if (!isInCheck(kingLocation.first, kingLocation.second, c, currentStat)) {
-      turns.push_back(turn);
+    if (toLocations[i].castling) {
+      correctToLocations[m++] = toLocations[i];
     } else {
-      // cout << "king is in check\n";
+      Square sq = getKingLocation(currentState, isWhitesTurn);
+      if (!isInCheck(currentState, sq.first, sq.second, isWhitesTurn)) {
+        correctToLocations[m++] = toLocations[i];
+      }
     }
-    currentStat = originalState;
+    currentState = origState;
   }
-
-  return turns;
 }
 std::vector<Turn> movesSoFar;
 
-uint64_t perft(gameState& currentState, int depth, bool isRoot = true) {
-  if (depth == 0) {
-    return 1;
+uint64_t getCountCorrectTurns(gameState& currentState) {
+  bool isWhitesTurn = currentState.isWhitesTurn;
+  uint64_t count = 0;
+  Turns toLocations;
+  int n = 0;
+  getPseudoCorrect(currentState, toLocations, n);
+
+  auto kingLocation = getKingLocation(currentState, isWhitesTurn);
+  bool includeKnightCapturesValidation = knightCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
+  bool includePawnCapturesValidation = pawnCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
+
+  for (int i = 0; i < n; i++) {
+    auto origWKingLocation = currentState.wKingLocation;
+    auto origBKingLocation = currentState.bKingLocation;
+    auto origEnPassantSq = currentState.enpassantSq;
+    gameState::Castling origCastling = currentState.castling;
+
+    applyTurn(currentState, toLocations[i]);
+
+    if (toLocations[i].castling) {
+      count++;
+    } else {
+      Square sq = getKingLocation(currentState, isWhitesTurn);
+      if (!isInCheck(currentState, sq.first, sq.second, isWhitesTurn,
+                     includeKnightCapturesValidation,
+                     includePawnCapturesValidation)) {
+        count++;
+      }
+    }
+
+    // undo
+    currentState.wKingLocation = origWKingLocation;
+    currentState.bKingLocation = origBKingLocation;
+    currentState.enpassantSq = origEnPassantSq;
+    currentState.castling = origCastling;
+    currentState.isWhitesTurn = !currentState.isWhitesTurn;
+
+    Square from = toLocations[i].from;
+    Square to = toLocations[i].to;
+    currentState.board[from.first][from.second] =
+        currentState.board[to.first][to.second];
+    currentState.board[to.first][to.second] = toLocations[i].capturedPiece;
+
+    if (toLocations[i].promotionPiece != Pieces::empty) {
+      currentState.board[from.first][from.second] =
+          currentState.isWhitesTurn ? Pieces::wPawn : Pieces::bPawn;
+    }
+
+    if (toLocations[i].enPassant) {
+      currentState.board[from.first][to.second] =
+          currentState.isWhitesTurn ? Pieces::bPawn : Pieces::wPawn;
+    }
+
+    if (toLocations[i].castling) {
+      if (from.first == 2) {
+        if (to.second == 8) {
+          currentState.board[2][7] = Pieces::empty;
+          currentState.board[2][9] = Pieces::wRook;
+        } else if (to.second == 4) {
+          currentState.board[2][5] = Pieces::empty;
+          currentState.board[2][2] = Pieces::wRook;
+        }
+      } else {
+        if (to.second == 8) {
+          currentState.board[9][7] = Pieces::empty;
+          currentState.board[9][9] = Pieces::bRook;
+        } else if (to.second == 4) {
+          currentState.board[9][5] = Pieces::empty;
+          currentState.board[9][2] = Pieces::bRook;
+        }
+      }
+    }
   }
+  return count;
+}
+
+uint64_t perft(gameState& currentState, int depth) {
+  if (depth == 0) return 1;
+  if (depth == 1) return getCountCorrectTurns(currentState);
 
   uint64_t count = 0;
-  auto turns = generateTurns(currentState);
-  for (auto& turn : turns) {
-    gameState origState = currentState;
-    applyTurn(turn, currentState);
+  Turns turns;
+  int n = 0;
+  getPseudoCorrect(currentState, turns, n);
 
-    count += perft(currentState, depth - 1, false);
+  bool isWhitesTurn = currentState.isWhitesTurn;
+  auto kingLocation = getKingLocation(currentState, isWhitesTurn);
+  bool includeKnightCapturesValidation = knightCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
+  bool includePawnCapturesValidation = pawnCaptures(
+      currentState, kingLocation.first, kingLocation.second, isWhitesTurn);
 
-    currentState = origState;
+  for (int i = 0; i < n; i++) {
+    Square origWKingLocation = currentState.wKingLocation;
+    Square origBKingLocation = currentState.bKingLocation;
+    Square origEnPassantSq = currentState.enpassantSq;
+    gameState::Castling origCastling = currentState.castling;
+
+    applyTurn(currentState, turns[i]);
+
+    if (turns[i].castling) {
+      count += perft(currentState, depth - 1);
+    } else {
+      Square sq = getKingLocation(currentState, isWhitesTurn);
+      if (!isInCheck(currentState, sq.first, sq.second, isWhitesTurn,
+                     includeKnightCapturesValidation,
+                     includePawnCapturesValidation)) {
+        count += perft(currentState, depth - 1);
+      }
+    }
+
+    // Undo move
+    currentState.wKingLocation = origWKingLocation;
+    currentState.bKingLocation = origBKingLocation;
+    currentState.enpassantSq = origEnPassantSq;
+    currentState.castling = origCastling;
+    currentState.isWhitesTurn = !currentState.isWhitesTurn;
+
+    Square from = turns[i].from;
+    Square to = turns[i].to;
+    currentState.board[from.first][from.second] =
+        currentState.board[to.first][to.second];
+    currentState.board[to.first][to.second] = turns[i].capturedPiece;
+
+    if (turns[i].promotionPiece != Pieces::empty) {
+      currentState.board[from.first][from.second] =
+          currentState.isWhitesTurn ? Pieces::wPawn : Pieces::bPawn;
+    }
+
+    if (turns[i].enPassant) {
+      currentState.board[from.first][to.second] =
+          currentState.isWhitesTurn ? Pieces::bPawn : Pieces::wPawn;
+    }
+
+    if (turns[i].castling) {
+      if (from.first == 2) {
+        if (to.second == 8) {
+          currentState.board[2][7] = Pieces::empty;
+          currentState.board[2][9] = Pieces::wRook;
+        } else if (to.second == 4) {
+          currentState.board[2][5] = Pieces::empty;
+          currentState.board[2][2] = Pieces::wRook;
+        }
+      } else {
+        if (to.second == 8) {
+          currentState.board[9][7] = Pieces::empty;
+          currentState.board[9][9] = Pieces::bRook;
+        } else if (to.second == 4) {
+          currentState.board[9][5] = Pieces::empty;
+          currentState.board[9][2] = Pieces::bRook;
+        }
+      }
+    }
   }
   return count;
 }
@@ -1231,9 +1337,9 @@ uint64_t perft(gameState& currentState, int depth, bool isRoot = true) {
 std::string toFen(const gameState& gs) {
   std::stringstream fen;
 
-  for (int row = 7; row >= 0; row--) {
+  for (int row = 9; row >= 2; row--) {
     int emptyCount = 0;
-    for (int col = 0; col < 8; col++) {
+    for (int col = 2; col < 10; col++) {
       Pieces piece = gs.board[row][col];
       if (piece == Pieces::empty) {
         emptyCount++;
@@ -1248,11 +1354,11 @@ std::string toFen(const gameState& gs) {
     if (emptyCount > 0) {
       fen << emptyCount;
     }
-    if (row > 0) fen << '/';
+    if (row > 2) fen << '/';
   }
   fen << ' ';
 
-  fen << (gs.currentColour == Colours::white ? 'w' : 'b') << ' ';
+  fen << (gs.isWhitesTurn ? 'w' : 'b') << ' ';
 
   if (gs.castling.wkingSide || gs.castling.wQueenSide ||
       gs.castling.bKingSide || gs.castling.bQueenSide) {
@@ -1283,24 +1389,24 @@ std::string toFen(const gameState& gs) {
   return fen.str();
 }
 
-int evaluateBoard(const gameState& gs) {
+int evaluateBoard(gameState& gs) {
   int evaluationScore = 0;
 
-  for (int i = 0; i < 8; i++) {
-    for (int j = 0; j < 8; j++) {
+  for (int i = 2; i <= 9; i++) {
+    for (int j = 2; j <= 9; j++) {
       Pieces piece = gs.board[i][j];
       evaluationScore += pieceValue(piece);
     }
   }
 
-  auto turns = generateTurns(const_cast<gameState&>(gs));
-  if (turns.empty()) {
-    Pieces king =
-        gs.currentColour == Colours::white ? Pieces::wKing : Pieces::bKing;
-    Square kingLocation = getPieceLocation(king, gs);
-    if (isInCheck(kingLocation.first, kingLocation.second, gs.currentColour,
-                  gs)) {
-      return gs.currentColour == Colours::white ? -100000 : 100000;
+  Turns turns;
+  int n = 0;
+  generateTurns(gs, turns, n);
+  if (n == 0) {
+    Square kingLocation = getKingLocation(gs, gs.isWhitesTurn);
+    if (isInCheck(gs, kingLocation.first, kingLocation.second,
+                  gs.isWhitesTurn)) {
+      return gs.isWhitesTurn ? -100000 : 100000;
     }
   }
 
@@ -1308,12 +1414,16 @@ int evaluateBoard(const gameState& gs) {
 }
 
 void perftDebug(gameState& currentState, int depth) {
-  for (auto& turn : generateTurns(currentState)) {
+  Turns turns;
+  int n = 0;
+  generateTurns(currentState, turns, n);
+
+  for (int i = 0; i < n; i++) {
     gameState origState = currentState;
-    applyTurn(turn, currentState);
+    applyTurn(currentState, turns[i]);
     uint64_t count = perft(currentState, depth - 1);
 
-    std::cout << turn.numberToSquare() << ":" << count << "\n";
+    std::cout << turns[i].numberToSquare() << ":" << count << "\n";
 
     currentState = origState;
   }
