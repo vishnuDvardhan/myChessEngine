@@ -17,8 +17,7 @@ void applyMovesFromUci(const vector<string>& moves) {
     Turn userMove;
     try {
       userMove = Turn(moveStr);
-      if (currentState.currentColour == Colours::white &&
-          moveStr.length() > 4) {
+      if (currentState.isWhitesTurn && moveStr.length() > 4) {
         string modifiableMoveStr = moveStr;
         modifiableMoveStr[4] = toupper(modifiableMoveStr[4]);
         userMove = Turn(modifiableMoveStr);
@@ -26,18 +25,22 @@ void applyMovesFromUci(const vector<string>& moves) {
     } catch (...) {
       cerr << "[error] invalid move string: " << moveStr << endl;
       cerr << "legal moves: ";
-      vector<Turn> legalMoves = generateTurns(currentState);
-      for (Turn& move : legalMoves) {
-        cerr << move.numberToSquare() << " ";
+      Turns legalMovesArray;
+      int numMoves = 0;
+      generateTurns(currentState, legalMovesArray, numMoves);
+      for (int i = 0; i < numMoves; i++) {
+        cerr << legalMovesArray[i].numberToSquare() << " ";
       }
       continue;
     }
 
-    vector<Turn> legalMoves = generateTurns(currentState);
+    Turns legalMovesArray;
+    int numMoves = 0;
+    generateTurns(currentState, legalMovesArray, numMoves);
     bool applied = false;
-    for (const Turn& move : legalMoves) {
-      if (move == userMove) {
-        applyTurn(move, currentState);
+    for (int i = 0; i < numMoves; i++) {
+      if (legalMovesArray[i] == userMove) {
+        applyTurn(currentState, legalMovesArray[i]);
         applied = true;
         break;
       }
@@ -96,7 +99,7 @@ void uciLoop() {
         }
       }
     } else if (command == "go") {
-      Turn bestMove = findBestMove(currentState, 4);
+      Turn bestMove = findBestMove(currentState, 6);
       cout << "bestmove " << bestMove.numberToSquare() << endl;
       cout.flush();
     } else if (command == "quit") {
