@@ -10,14 +10,14 @@ int minimax(gameState& state, int depth, int alpha, int beta,
     return evaluateBoard(state);
   }
 
-  vector<Turn> moves = generateTurns(state);
+  Turns movesArray;
+  int numMoves = 0;
+  generateTurns(state, movesArray, numMoves);
 
-  if (moves.empty()) {
-    Pieces king = maximizingPlayer ? Pieces::wKing : Pieces::bKing;
-    Square kingLoc = getPieceLocation(king, state);
+  if (numMoves == 0) {
+    Square kingLoc = getKingLocation(state, maximizingPlayer);
     bool inCheck =
-        isInCheck(kingLoc.first, kingLoc.second,
-                  maximizingPlayer ? Colours::white : Colours::black, state);
+        isInCheck(state, kingLoc.first, kingLoc.second, maximizingPlayer);
 
     if (inCheck)
       return maximizingPlayer ? -100000 : 100000;
@@ -27,10 +27,9 @@ int minimax(gameState& state, int depth, int alpha, int beta,
 
   if (maximizingPlayer) {
     int maxEval = -1000000;
-    for (Turn& move : moves) {
+    for (int i = 0; i < numMoves; i++) {
       gameState backup = state;
-      applyTurn(move, state);
-      state.currentColour = Colours::black;
+      applyTurn(state, movesArray[i]);
 
       int eval = minimax(state, depth - 1, alpha, beta, false);
       maxEval = max(maxEval, eval);
@@ -45,10 +44,9 @@ int minimax(gameState& state, int depth, int alpha, int beta,
     return maxEval;
   } else {
     int minEval = 1000000;
-    for (Turn& move : moves) {
+    for (int i = 0; i < numMoves; i++) {
       gameState backup = state;
-      applyTurn(move, state);
-      state.currentColour = Colours::white;
+      applyTurn(state, movesArray[i]);
 
       int eval = minimax(state, depth - 1, alpha, beta, true);
       minEval = min(minEval, eval);
@@ -65,28 +63,28 @@ int minimax(gameState& state, int depth, int alpha, int beta,
 }
 
 Turn findBestMove(gameState& state, int depth) {
-  vector<Turn> moves = generateTurns(state);
-  Turn bestMove = {{-1, -1}, {-1, -1}};
-  if (moves.empty()) return bestMove;
+  Turns movesArray;
+  int numMoves = 0;
+  generateTurns(state, movesArray, numMoves);
 
-  Colours originalColour = state.currentColour;
-  bool maximizing = (originalColour == Colours::white);
+  Turn bestMove = {{-1, -1}, {-1, -1}};
+  if (numMoves == 0) return bestMove;
+
+  bool maximizing = state.isWhitesTurn;
   int bestScore = maximizing ? -1000000 : 1000000;
 
-  for (Turn& move : moves) {
+  for (int i = 0; i < numMoves; i++) {
     gameState backup = state;
-    applyTurn(move, state);
-    state.currentColour =
-        (originalColour == Colours::white) ? Colours::black : Colours::white;
+    applyTurn(state, movesArray[i]);
 
     int score = minimax(state, depth - 1, -100000, 100000, !maximizing);
 
     if (maximizing && score > bestScore) {
       bestScore = score;
-      bestMove = move;
+      bestMove = movesArray[i];
     } else if (!maximizing && score < bestScore) {
       bestScore = score;
-      bestMove = move;
+      bestMove = movesArray[i];
     }
 
     state = backup;
