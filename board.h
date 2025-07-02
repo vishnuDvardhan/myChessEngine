@@ -218,15 +218,15 @@ struct Turn {
 typedef Turn Turns[255];
 
 // Basic piece detection functions
-bool isEmpty(int i, int j, gameState currentState);
-bool isWhite(int i, int j, gameState currentState);
-bool isBlack(int i, int j, gameState currentState);
-bool isPawn(int i, int j, gameState currentState);
-bool isKnight(int i, int j, gameState currentState);
-bool isBishop(int i, int j, gameState currentState);
-bool isRook(int i, int j, gameState currentState);
-bool isQueen(int i, int j, gameState currentState);
-bool isKing(int i, int j, gameState currentState);
+bool isEmpty(int i, int j, gameState& currentState);
+bool isWhite(int i, int j, gameState& currentState);
+bool isBlack(int i, int j, gameState& currentState);
+bool isPawn(int i, int j, gameState& currentState);
+bool isKnight(int i, int j, gameState& currentState);
+bool isBishop(int i, int j, gameState& currentState);
+bool isRook(int i, int j, gameState& currentState);
+bool isQueen(int i, int j, gameState& currentState);
+bool isKing(int i, int j, gameState& currentState);
 
 // Check detection functions
 bool pawnCaptures(gameState& currentState, int i, int j, bool isWhitesTurn);
@@ -276,31 +276,31 @@ void getPseudoCorrect(gameState& currentState, Turns& toLocations, int& n);
 void generateTurns(gameState& currentState, Turns& correctToLocations, int& m);
 void applyTurn(gameState& currentState, Turn& turn);
 
-bool isEmpty(int i, int j, gameState currentState) {
+bool isEmpty(int i, int j, gameState& currentState) {
   return !(currentState.board[i][j] ^ Pieces::empty);
 }
 
-bool isRook(int i, int j, gameState currentState) {
+bool isRook(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b10000010000);
 }
 
-bool isKnight(int i, int j, gameState currentState) {
+bool isKnight(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b100000100);
 }
 
-bool isPawn(int i, int j, gameState currentState) {
+bool isPawn(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b10000010);
 }
 
-bool isBishop(int i, int j, gameState currentState) {
+bool isBishop(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b1000001000);
 }
 
-bool isQueen(int i, int j, gameState currentState) {
+bool isQueen(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b100000100000);
 }
 
-bool isKing(int i, int j, gameState currentState) {
+bool isKing(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b1000001000000);
 }
 
@@ -466,11 +466,11 @@ void printBoard(gameState currentState) {
   cout << "\n";
 }
 
-bool isWhite(int i, int j, gameState currentState) {
+bool isWhite(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b1111110);
 }
 
-bool isBlack(int i, int j, gameState currentState) {
+bool isBlack(int i, int j, gameState& currentState) {
   return (currentState.board[i][j] & 0b1111110000000);
 }
 
