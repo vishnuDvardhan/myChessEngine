@@ -1,5 +1,8 @@
 #include <stdio.h>
 
+#include <iostream>
+using namespace std;
+
 #define U64 unsigned long long
 
 inline int get_bit(U64 bit_board, int square) {
@@ -92,9 +95,127 @@ board value 18374403900871474942
 board value 9187201950435737471
 
 
+      not GH constant
+8   1  1  1  1  1  1  0  0
+7   1  1  1  1  1  1  0  0
+6   1  1  1  1  1  1  0  0
+5   1  1  1  1  1  1  0  0
+4   1  1  1  1  1  1  0  0
+3   1  1  1  1  1  1  0  0
+2   1  1  1  1  1  1  0  0
+1   1  1  1  1  1  1  0  0
+
+    a  b  c  d  e  f  g  h
+
+board value 4557430888798830399
+
+      not AB constant
+8   0  0  1  1  1  1  1  1
+7   0  0  1  1  1  1  1  1
+6   0  0  1  1  1  1  1  1
+5   0  0  1  1  1  1  1  1
+4   0  0  1  1  1  1  1  1
+3   0  0  1  1  1  1  1  1
+2   0  0  1  1  1  1  1  1
+1   0  0  1  1  1  1  1  1
+
+    a  b  c  d  e  f  g  h
+
+board value 18229723555195321596
+
+
+      not 87 constant
+8   0  0  0  0  0  0  0  0
+7   0  0  0  0  0  0  0  0
+6   1  1  1  1  1  1  1  1
+5   1  1  1  1  1  1  1  1
+4   1  1  1  1  1  1  1  1
+3   1  1  1  1  1  1  1  1
+2   1  1  1  1  1  1  1  1
+1   1  1  1  1  1  1  1  1
+
+    a  b  c  d  e  f  g  h
+
+board value 18446744073709486080
+
+
+      not 12 constant
+8   1  1  1  1  1  1  1  1
+7   1  1  1  1  1  1  1  1
+6   1  1  1  1  1  1  1  1
+5   1  1  1  1  1  1  1  1
+4   1  1  1  1  1  1  1  1
+3   1  1  1  1  1  1  1  1
+2   0  0  0  0  0  0  0  0
+1   0  0  0  0  0  0  0  0
+
+    a  b  c  d  e  f  g  h
+
+board value 281474976710655
+
+
 */
 
 U64 pawn_attacks[2][64];
+U64 knight_attacks[64];
+U64 king_attacks[64];
+
+U64 mask_knight_attacks(int square) {
+  U64 attacks = 0ULL;
+  U64 bit_board = 0ULL;
+  U64 not_A_file_board = 18374403900871474942ULL;
+  U64 not_H_file_board = 9187201950435737471ULL;
+  U64 not_GH_file_board = 4557430888798830399ULL;
+  U64 not_AB_file_board = 18229723555195321596ULL;
+  U64 not_12_rank_board = 281474976710655ULL;
+  U64 not_78_rank_board = 18446744073709486080ULL;
+
+  // set piece on board
+  bit_board = set_bit(bit_board, square);
+  cout << "board:" << square << "\n";
+  print_bit_board(bit_board);
+  if (bit_board & not_H_file_board) attacks |= (bit_board >> 15);
+  if (bit_board & not_A_file_board) attacks |= (bit_board >> 17);
+  if (bit_board & not_A_file_board) attacks |= (bit_board << 15);
+  if (bit_board & not_H_file_board) attacks |= (bit_board << 17);
+  if (bit_board & not_GH_file_board) attacks |= (bit_board >> 6);
+  if (bit_board & not_AB_file_board) attacks |= (bit_board >> 10);
+  if (bit_board & not_AB_file_board) attacks |= (bit_board << 6);
+  if (bit_board & not_GH_file_board) attacks |= (bit_board << 10);
+  cout << "attack:" << square << "\n";
+  print_bit_board(attacks);
+
+  return attacks;
+}
+
+U64 mask_king_attacks(int square) {
+  U64 attacks = 0ULL;
+  U64 bit_board = 0ULL;
+  U64 not_A_file_board = 18374403900871474942ULL;
+  U64 not_H_file_board = 9187201950435737471ULL;
+  U64 not_GH_file_board = 4557430888798830399ULL;
+  U64 not_AB_file_board = 18229723555195321596ULL;
+  U64 not_12_rank_board = 281474976710655ULL;
+  U64 not_78_rank_board = 18446744073709486080ULL;
+
+  // set piece on board
+  bit_board = set_bit(bit_board, square);
+  cout << "board:" << square << "\n";
+  print_bit_board(bit_board);
+  if (bit_board & not_H_file_board) attacks |= (bit_board >> 7);
+  if (bit_board & not_H_file_board) attacks |= (bit_board << 1);
+  if (bit_board & not_A_file_board) attacks |= (bit_board >> 1);
+  if (bit_board & not_A_file_board) attacks |= (bit_board >> 9);
+  if (bit_board & not_A_file_board) attacks |= (bit_board << 7);
+  if (bit_board & not_H_file_board) attacks |= (bit_board << 9);
+  attacks |= (bit_board << 8);
+  attacks |= (bit_board >> 8);
+
+  cout << "attack:" << square << "\n";
+  print_bit_board(attacks);
+
+  return attacks;
+}
 
 U64 mask_pawn_attacks(int square, int side) {
   U64 attacks = 0ULL;
@@ -104,6 +225,7 @@ U64 mask_pawn_attacks(int square, int side) {
 
   // set piece on board
   bit_board = set_bit(bit_board, square);
+  cout << "board:" << square << "\n";
   print_bit_board(bit_board);
 
   // white
@@ -114,6 +236,8 @@ U64 mask_pawn_attacks(int square, int side) {
     if (bit_board & not_A_file_board) attacks |= (bit_board << 7);
     if (bit_board & not_H_file_board) attacks |= (bit_board << 9);
   }
+  cout << "attack:" << square << "\n";
+
   print_bit_board(attacks);
 
   return attacks;
@@ -121,9 +245,12 @@ U64 mask_pawn_attacks(int square, int side) {
 
 void init_leaper_attacks() {
   // pawn attacks
-  for (int side = 0; side < 2; side++) {
-    for (int square = 0; square < 64; square++) {
-      pawn_attacks[side][square] = mask_pawn_attacks(square, side);
-    }
+
+  for (int square = 0; square < 64; square++) {
+    pawn_attacks[white][square] = mask_pawn_attacks(square, white);
+    pawn_attacks[black][square] = mask_pawn_attacks(square, black);
+
+    knight_attacks[square] = mask_knight_attacks(square);
+    king_attacks[square] = mask_king_attacks(square);
   }
 }
