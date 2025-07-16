@@ -13,6 +13,16 @@ inline U64 set_bit(U64 bit_board, int square) {
   return bit_board | (1ULL << square);
 }
 
+inline int count_bits(U64 bit_board) {
+  int count = 0;
+  while (bit_board > 0) {
+    bit_board &= (bit_board - 1);
+    count++;
+  }
+
+  return count;
+}
+
 // inline U64 pop_bit(U64 bit_board, int square) {
 //   return get_bit(bit_board, square) ? bit_board ^ (1ULL << square) :
 //   bit_board;
@@ -236,6 +246,141 @@ U64 mask_pawn_attacks(int square, int side) {
     if (bit_board & not_A_file_board) attacks |= (bit_board << 7);
     if (bit_board & not_H_file_board) attacks |= (bit_board << 9);
   }
+  cout << "attack:" << square << "\n";
+
+  print_bit_board(attacks);
+
+  return attacks;
+}
+
+U64 mask_bishop_attacks(int square) {
+  U64 attacks = 0ULL;
+  U64 bit_board = 0ULL;
+  U64 not_A_file_board = 18374403900871474942ULL;
+  U64 not_H_file_board = 9187201950435737471ULL;
+
+  // set piece on board
+  bit_board = set_bit(bit_board, square);
+  // cout << "board:" << square << "\n";
+  // print_bit_board(bit_board);
+  int r, f;
+  int target_rank = square / 8;
+  int target_file = square % 8;
+  for (r = target_rank + 1, f = target_file + 1; r <= 6 && f <= 6; r++, f++)
+    attacks |= (1ULL << (r * 8 + f));
+  for (r = target_rank - 1, f = target_file - 1; r >= 1 && f >= 1; r--, f--)
+    attacks |= (1ULL << (r * 8 + f));
+  for (r = target_rank - 1, f = target_file + 1; r >= 1 && f <= 6; r--, f++)
+    attacks |= (1ULL << (r * 8 + f));
+  for (r = target_rank + 1, f = target_file - 1; r <= 6 && f >= 1; r++, f--)
+    attacks |= (1ULL << (r * 8 + f));
+
+  cout << "attack:" << square << "\n";
+
+  print_bit_board(attacks);
+
+  return attacks;
+}
+
+U64 bishop_attacks_on_fly(int square, U64 blocker) {
+  U64 attacks = 0ULL;
+  U64 bit_board = 0ULL;
+  U64 not_A_file_board = 18374403900871474942ULL;
+  U64 not_H_file_board = 9187201950435737471ULL;
+
+  // set piece on board
+  bit_board = set_bit(bit_board, square);
+  // cout << "board:" << square << "\n";
+  // print_bit_board(bit_board);
+  int r, f;
+  int target_rank = square / 8;
+  int target_file = square % 8;
+  for (r = target_rank + 1, f = target_file + 1; r <= 7 && f <= 7; r++, f++) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+  for (r = target_rank - 1, f = target_file - 1; r >= 0 && f >= 0; r--, f--) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+  for (r = target_rank - 1, f = target_file + 1; r >= 0 && f <= 7; r--, f++) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+  for (r = target_rank + 1, f = target_file - 1; r <= 7 && f >= 0; r++, f--) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+
+  cout << "attack:" << square << "\n";
+
+  print_bit_board(attacks);
+
+  return attacks;
+}
+
+U64 mask_rook_attacks(int square) {
+  U64 attacks = 0ULL;
+  U64 bit_board = 0ULL;
+  U64 not_A_file_board = 18374403900871474942ULL;
+  U64 not_H_file_board = 9187201950435737471ULL;
+
+  // set piece on board
+  bit_board = set_bit(bit_board, square);
+  // cout << "board:" << square << "\n";
+  // print_bit_board(bit_board);
+  int r, f;
+  int target_rank = square / 8;
+  int target_file = square % 8;
+  for (r = target_rank + 1, f = target_file; r <= 6; r++)
+    attacks |= (1ULL << (r * 8 + f));
+  for (r = target_rank - 1, f = target_file; r >= 1; r--)
+    attacks |= (1ULL << (r * 8 + f));
+  for (r = target_rank, f = target_file + 1; f <= 6; f++)
+    attacks |= (1ULL << (r * 8 + f));
+  for (r = target_rank, f = target_file - 1; f >= 1; f--)
+    attacks |= (1ULL << (r * 8 + f));
+
+  cout << "attack:" << square << "\n";
+
+  print_bit_board(attacks);
+
+  return attacks;
+}
+
+U64 rook_attacks_on_fly(int square, U64 blocker) {
+  U64 attacks = 0ULL;
+  U64 bit_board = 0ULL;
+  U64 not_A_file_board = 18374403900871474942ULL;
+  U64 not_H_file_board = 9187201950435737471ULL;
+
+  // set piece on board
+  bit_board = set_bit(bit_board, square);
+  // cout << "board:" << square << "\n";
+  // print_bit_board(bit_board);
+  int r, f;
+  int target_rank = square / 8;
+  int target_file = square % 8;
+  for (r = target_rank + 1, f = target_file; r <= 7; r++) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+
+  for (r = target_rank - 1, f = target_file; r >= 0; r--) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+
+  for (r = target_rank, f = target_file + 1; f <= 7; f++) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+
+  for (r = target_rank, f = target_file - 1; f >= 0; f--) {
+    attacks |= (1ULL << (r * 8 + f));
+    if ((1ULL << (r * 8 + f)) & blocker) break;
+  }
+
   cout << "attack:" << square << "\n";
 
   print_bit_board(attacks);
