@@ -23,6 +23,13 @@ inline int count_bits(U64 bit_board) {
   return count;
 }
 
+inline int get_least_signi_bit_ind(U64 bit_board) {
+  if (bit_board) {
+    return count_bits((bit_board & -bit_board) - 1);
+  }
+  return -1;
+}
+
 // inline U64 pop_bit(U64 bit_board, int square) {
 //   return get_bit(bit_board, square) ? bit_board ^ (1ULL << square) :
 //   bit_board;
@@ -68,6 +75,17 @@ enum {
 
 enum {
   black,white
+};
+
+const char* index_to_square[64] = {
+    "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
+    "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+    "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+    "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+    "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+    "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+    "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+    "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
 };
 
 // clang-format on
@@ -398,4 +416,16 @@ void init_leaper_attacks() {
     knight_attacks[square] = mask_knight_attacks(square);
     king_attacks[square] = mask_king_attacks(square);
   }
+}
+U64 set_occupancy(int index, int bits_in_mask, U64 attack_mask) {
+  U64 occupancy = 0ULL;
+  for (int i = 0; i < bits_in_mask; i++) {
+    int square = get_least_signi_bit_ind(attack_mask);
+    attack_mask = pop_bit(attack_mask, square);
+    if (index & (1 << i)) {
+      occupancy |= (1ULL << square);
+    }
+  }
+
+  return occupancy;
 }
