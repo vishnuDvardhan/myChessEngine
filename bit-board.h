@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <cstring>
 #include <iostream>
 using namespace std;
 
@@ -77,6 +78,11 @@ enum {
   black,white
 };
 
+
+// enum { 
+//   rook,bishop
+// };
+
 const char* index_to_square[64] = {
     "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
     "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
@@ -88,6 +94,31 @@ const char* index_to_square[64] = {
     "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
 };
 
+
+
+int bishop_relevant_occupancy_bits[64]=
+{
+    6,5,5,5,5,5,5,6,
+    5,5,5,5,5,5,5,5,
+    5,5,7,7,7,7,5,5,
+    5,5,7,9,9,7,5,5,
+    5,5,7,9,9,7,5,5,
+    5,5,7,7,7,7,5,5,
+    5,5,5,5,5,5,5,5,
+    6,5,5,5,5,5,5,6,
+};
+
+int rook_relevant_occupancy_bits[64]=
+{
+    12,11,11,11,11,11,11,12,
+    11,10,10,10,10,10,10,11,
+    11,10,10,10,10,10,10,11,
+    11,10,10,10,10,10,10,11,
+    11,10,10,10,10,10,10,11,
+    11,10,10,10,10,10,10,11,
+    11,10,10,10,10,10,10,11,
+    12,11,11,11,11,11,11,12,
+};
 // clang-format on
 
 // attack boards
@@ -187,6 +218,8 @@ board value 281474976710655
 U64 pawn_attacks[2][64];
 U64 knight_attacks[64];
 U64 king_attacks[64];
+U64 rook_magic_numbers[64];
+U64 bishop_magic_numbers[64];
 
 U64 mask_knight_attacks(int square) {
   U64 attacks = 0ULL;
@@ -228,8 +261,8 @@ U64 mask_king_attacks(int square) {
 
   // set piece on board
   bit_board = set_bit(bit_board, square);
-  cout << "board:" << square << "\n";
-  print_bit_board(bit_board);
+  // cout << "board:" << square << "\n";
+  // print_bit_board(bit_board);
   if (bit_board & not_H_file_board) attacks |= (bit_board >> 7);
   if (bit_board & not_H_file_board) attacks |= (bit_board << 1);
   if (bit_board & not_A_file_board) attacks |= (bit_board >> 1);
@@ -239,8 +272,8 @@ U64 mask_king_attacks(int square) {
   attacks |= (bit_board << 8);
   attacks |= (bit_board >> 8);
 
-  cout << "attack:" << square << "\n";
-  print_bit_board(attacks);
+  // cout << "attack:" << square << "\n";
+  // print_bit_board(attacks);
 
   return attacks;
 }
@@ -253,8 +286,8 @@ U64 mask_pawn_attacks(int square, int side) {
 
   // set piece on board
   bit_board = set_bit(bit_board, square);
-  cout << "board:" << square << "\n";
-  print_bit_board(bit_board);
+  // cout << "board:" << square << "\n";
+  // print_bit_board(bit_board);
 
   // white
   if (side) {
@@ -264,9 +297,9 @@ U64 mask_pawn_attacks(int square, int side) {
     if (bit_board & not_A_file_board) attacks |= (bit_board << 7);
     if (bit_board & not_H_file_board) attacks |= (bit_board << 9);
   }
-  cout << "attack:" << square << "\n";
+  // cout << "attack:" << square << "\n";
 
-  print_bit_board(attacks);
+  // print_bit_board(attacks);
 
   return attacks;
 }
@@ -293,9 +326,9 @@ U64 mask_bishop_attacks(int square) {
   for (r = target_rank + 1, f = target_file - 1; r <= 6 && f >= 1; r++, f--)
     attacks |= (1ULL << (r * 8 + f));
 
-  cout << "attack:" << square << "\n";
+  // cout << "attack:" << square << "\n";
 
-  print_bit_board(attacks);
+  // print_bit_board(attacks);
 
   return attacks;
 }
@@ -330,9 +363,9 @@ U64 bishop_attacks_on_fly(int square, U64 blocker) {
     if ((1ULL << (r * 8 + f)) & blocker) break;
   }
 
-  cout << "attack:" << square << "\n";
+  // cout << "attack:" << square << "\n";
 
-  print_bit_board(attacks);
+  // print_bit_board(attacks);
 
   return attacks;
 }
@@ -359,9 +392,9 @@ U64 mask_rook_attacks(int square) {
   for (r = target_rank, f = target_file - 1; f >= 1; f--)
     attacks |= (1ULL << (r * 8 + f));
 
-  cout << "attack:" << square << "\n";
+  // cout << "attack:" << square << "\n";
 
-  print_bit_board(attacks);
+  // print_bit_board(attacks);
 
   return attacks;
 }
@@ -399,9 +432,9 @@ U64 rook_attacks_on_fly(int square, U64 blocker) {
     if ((1ULL << (r * 8 + f)) & blocker) break;
   }
 
-  cout << "attack:" << square << "\n";
+  // cout << "attack:" << square << "\n";
 
-  print_bit_board(attacks);
+  // print_bit_board(attacks);
 
   return attacks;
 }
@@ -428,4 +461,86 @@ U64 set_occupancy(int index, int bits_in_mask, U64 attack_mask) {
   }
 
   return occupancy;
+}
+
+unsigned int state = 1804289383;
+unsigned int get_random_32() {
+  unsigned int num = state;
+  num ^= num << 13;
+  num ^= num >> 17;
+  num ^= num << 5;
+  state = num;
+  return num;
+}
+
+U64 get_random_64() {
+  U64 n1, n2, n3, n4;
+  n1 = (U64)(get_random_32()) & 0xFFFF;
+  n2 = (U64)(get_random_32()) & 0xFFFF;
+  n3 = (U64)(get_random_32()) & 0xFFFF;
+  n4 = (U64)(get_random_32()) & 0xFFFF;
+  return n1 | n2 << 16 | n3 << 32 | n4 << 48;
+}
+
+U64 generate_candidate_magic_number() {
+  return get_random_64() & get_random_64() & get_random_64();
+}
+
+U64 find_magic_number(int square, int relevant_occupancy_bits, int bishop) {
+  U64 occupancies[4096];
+  U64 attacks[4096];
+  U64 used_attacks[4096];
+  U64 attack_mask =
+      bishop ? mask_bishop_attacks(square) : mask_rook_attacks(square);
+  int occupancy_indices = 1 << relevant_occupancy_bits;
+  for (int i = 0; i < occupancy_indices; i++) {
+    occupancies[i] = set_occupancy(i, relevant_occupancy_bits, attack_mask);
+    attacks[i] = bishop ? bishop_attacks_on_fly(square, occupancies[i])
+                        : rook_attacks_on_fly(square, occupancies[i]);
+  }
+
+  for (int random_count = 0; random_count < 10000000000; random_count++) {
+    U64 magic_number = generate_candidate_magic_number();
+    // skip inappropriate number
+    if (count_bits(attack_mask * magic_number) & 0xFF00000000000000 < 6) {
+      continue;
+    }
+
+    memset(used_attacks, 0ULL, sizeof(used_attacks));
+
+    int index, failed;
+
+    for (index = 0, failed = 0; !failed && index < occupancy_indices; index++) {
+      int magic_index = (int)((occupancies[index] * magic_number) >>
+                              (64 - relevant_occupancy_bits));
+
+      // if magic index works
+      if (used_attacks[magic_index] == 0ULL) {
+        // init used attacks
+        used_attacks[magic_index] = attacks[index];
+      } else if (used_attacks[magic_index] != attacks[index]) {
+        failed = 1;
+      }
+    }
+    if (!failed) {
+      return magic_number;
+    }
+  }
+  printf("magic number fails");
+  return 0ULL;
+}
+
+// init magic numbers
+void init_magic_numbers() {
+  for (int square = 0; square < 64; square++) {
+    rook_magic_numbers[square] =
+        find_magic_number(square, rook_relevant_occupancy_bits[square], 0);
+    // printf("ox%llxULL\n", rook_magic_numbers[square]);
+  }
+  // printf("\n\n");
+  for (int square = 0; square < 64; square++) {
+    bishop_magic_numbers[square] =
+        find_magic_number(square, bishop_relevant_occupancy_bits[square], 1);
+    // printf("ox%llxULL\n", bishop_magic_numbers[square]);
+  }
 }
