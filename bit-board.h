@@ -2,10 +2,15 @@
 
 #include <cstring>
 #include <iostream>
+#include <unordered_map>
+
 using namespace std;
 
 #define U64 unsigned long long
-
+#define set_board(square, piece) \
+  (bitboards[piece] = set_bit(bitboards[piece], square))
+#define set_castle(state) (castle |= state)
+#define unset_castle(state) (castle &= ~state);
 inline int get_bit(U64 bit_board, int square) {
   return (bit_board & (1ULL << square)) ? 1 : 0;
 }
@@ -78,6 +83,10 @@ enum {
   black,white,both
 };
 
+enum {
+  wk=1,wq=2,bk=4,bq=8
+};
+
 
 // enum { 
 //   rook,bishop
@@ -94,6 +103,41 @@ const char* index_to_square[64] = {
     "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
 };
 
+char pieces[14] = "PNBRQKpnbrqk.";
+enum {P,N,B,R,Q,K,p,n,b,r,q,k};
+
+
+
+enum   {
+  wPawn,
+  wKnight,
+  wBishop,
+  wRook,
+  wQueen,
+  wKing,
+  bPawn,
+  bKnight,
+  bBishop,
+  bRook,
+  bQueen,
+  bKing,
+  empt,
+  invalid
+};
+
+unordered_map<char, int> charToPiece{
+    {' ', empt},   {'P', wPawn}, {'N',wKnight},
+    {'B', wBishop}, {'R', wRook}, {'Q',wQueen},
+    {'K', wKing},   {'p', bPawn}, {'n',bKnight},
+    {'b', bBishop}, {'r', bRook}, {'q',bQueen},
+    {'k', bKing}};
+
+unordered_map<int, char> pieceToChar{
+    {empt, '.'},   {wPawn, 'P'}, {wKnight, 'N'},
+    {wBishop, 'B'}, {wRook, 'R'}, {wQueen, 'Q'},
+    {wKing, 'K'},   {bPawn, 'p'}, {bKnight, 'n'},
+    {bBishop, 'b'}, {bRook, 'r'}, {bQueen, 'q'},
+    {bKing, 'k'}};
 
 
 int bishop_relevant_occupancy_bits[64]=
@@ -230,8 +274,100 @@ U64 bishop_magic_numbers[64];
 
 U64 bitboards[12];
 U64 occupancies[3];
-int side = -1;
+int side = white;
 int enpassant = no_sq;
+int castle;
+
+void print_board() {
+  for (int rank = 0; rank < 8; rank++) {
+    for (int file = 0; file < 8; file++) {
+      int square = rank * 8 + file;
+      if (!file) {
+        printf("  %d  ", 8 - rank);
+      }
+      int piece = -1;
+
+      for (int bitboard_count = P; bitboard_count <= k; bitboard_count++) {
+        if (get_bit(bitboards[bitboard_count], square)) piece = bitboard_count;
+      }
+
+      printf("%c ", (piece == -1 ? '.' : pieceToChar[piece]));
+    }
+    printf("\n");
+  }
+  printf("\n     a b c d e f g h\n\n");
+  printf("Side:       %s\n", (!side) ? "black" : "white");
+  printf("eEnpassant: %s\n",
+         (enpassant != no_sq) ? index_to_square[enpassant] : "no");
+  printf("Castling  : %c%c%c%c\n\n", (castle & wk ? 'K' : '-'),
+         (castle & wq ? 'Q' : '-'), (castle & bk ? 'k' : '-'),
+         (castle & bq ? 'q' : '-'));
+}
+
+void init_board() {
+  set_board(a2, P);
+  set_board(b2, P);
+  set_board(c2, P);
+  set_board(d2, P);
+  set_board(e2, P);
+  set_board(f2, P);
+  set_board(g2, P);
+  set_board(h2, P);
+
+  // set white knights
+  set_board(b1, N);
+  set_board(g1, N);
+
+  // set white bishops
+  set_board(c1, B);
+  set_board(f1, B);
+
+  // set white rooks
+  set_board(a1, R);
+  set_board(h1, R);
+
+  // set white queen & king
+  set_board(d1, Q);
+  set_board(e1, K);
+
+  // set white pawns
+  set_board(a7, p);
+  set_board(b7, p);
+  set_board(c7, p);
+  set_board(d7, p);
+  set_board(e7, p);
+  set_board(f7, p);
+  set_board(g7, p);
+  set_board(h7, p);
+
+  // set white knights
+  set_board(b8, n);
+  set_board(g8, n);
+
+  // set white bishops
+  set_board(c8, b);
+  set_board(f8, b);
+
+  // set white rooks
+  set_board(a8, r);
+  set_board(h8, r);
+
+  // set white queen & king
+  set_board(d8, q);
+  set_board(e8, k);
+
+  // init side
+  side = black;
+
+  // init enpassant
+  enpassant = no_sq;
+
+  // init castling
+  set_castle(wk);
+  set_castle(wq);
+  set_castle(bq);
+  set_castle(bk);
+}
 
 U64 mask_knight_attacks(int square) {
   U64 attacks = 0ULL;
