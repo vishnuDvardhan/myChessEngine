@@ -749,3 +749,68 @@ void init_all() {
   // bishop
   init_sliders_attacks(1);
 }
+
+void init_from_fen(char* fen) {
+  memset(bitboards, 0, sizeof(bitboards));
+  memset(occupancies, 0, sizeof(occupancies));
+  side = 0;
+  enpassant = no_sq;
+  castle = 0;
+
+  for (int rank = 0; rank < 8; rank++) {
+    int file = 0;
+    while (file < 8 && *fen != '/' && *fen != ' ') {
+      int square = 8 * rank + file;
+      if ((*fen >= 'a' && *fen <= 'z') || (*fen >= 'A' && *fen <= 'Z')) {
+        int piece = charToPiece[*fen];
+        set_board(square, piece);
+        file++;
+      } else if (*fen >= '1' && *fen <= '8') {
+        int emptySquares = *fen - '0';
+        file += emptySquares;
+      }
+      fen++;
+    }
+    if (*fen == '/') fen++;
+  }
+
+  if (*fen == ' ') fen++;
+
+  side = (*fen == 'w' ? white : black);
+  fen++;
+
+  if (*fen == ' ') fen++;
+
+  while (*fen != ' ' && *fen != '\0') {
+    if (*fen == 'K')
+      castle |= wk;
+    else if (*fen == 'Q')
+      castle |= wq;
+    else if (*fen == 'k')
+      castle |= bk;
+    else if (*fen == 'q')
+      castle |= bq;
+    else if (*fen == '-')
+      break;
+    fen++;
+  }
+
+  if (*fen == ' ') fen++;
+
+  if (*fen != '-') {
+    int en_file = fen[0] - 'a';
+    int en_rank = 8 - (fen[1] - '0');
+    enpassant = en_rank * 8 + en_file;
+  } else {
+    enpassant = no_sq;
+  }
+
+  for (int piece = P; piece <= K; piece++) {
+    occupancies[white] |= bitboards[piece];
+    occupancies[both] |= bitboards[piece];
+  }
+  for (int piece = p; piece <= k; piece++) {
+    occupancies[black] |= bitboards[piece];
+    occupancies[both] |= bitboards[piece];
+  }
+}
