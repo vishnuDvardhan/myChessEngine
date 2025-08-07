@@ -983,6 +983,7 @@ enum { all_moves, only_captures };
 inline int make_move(int move, int move_flag) {
   if (move_flag == all_moves) {
     copy_board();
+
     int source_square = get_move_source(move);
     int target_square = get_move_target(move);
     int piece = get_move_piece(move);
@@ -991,25 +992,32 @@ inline int make_move(int move, int move_flag) {
     int double_push = get_move_double_push(move);
     int enpass = get_move_enpassan(move);
     int castling = get_move_castling(move);
+
     pop_board(source_square, piece);
 
     if (capture) {
-      int s = (side == white ? p : P), e = (side == white ? k : K);
-      for (int piec = s; piec <= e; piec++) {
-        if (get_bit(bitboards[piec], target_square)) {
-          pop_board(target_square, piec);
-          break;
+      if (enpass) {
+        (side == white) ? pop_board(target_square + 8, p)
+                        : pop_board(target_square - 8, P);
+      } else {
+        int start_piece = (side == white) ? p : P;
+        int end_piece = (side == white) ? k : K;
+        for (int captured_piece = start_piece; captured_piece <= end_piece;
+             captured_piece++) {
+          if (get_bit(bitboards[captured_piece], target_square)) {
+            pop_board(target_square, captured_piece);
+            break;
+          }
         }
       }
     }
+
     if (promoted) {
-      pop_board(target_square, ((side == white) ? P : p));
       set_board(target_square, promoted);
+    } else {
+      set_board(target_square, piece);
     }
-    if (enpass) {
-      (side == white) ? pop_board(target_square + 8, p)
-                      : pop_board(target_square - 8, P);
-    }
+
     enpassant = no_sq;
     if (double_push) {
       (side == white) ? (enpassant = target_square + 8)
@@ -1017,30 +1025,34 @@ inline int make_move(int move, int move_flag) {
     }
 
     if (castling) {
-      if (target_square == g1) {
-        pop_board(h1, R);
-        set_board(f1, R);
-      } else if (target_square == c1) {
-        pop_board(a1, R);
-        set_board(d1, R);
-      } else if (target_square == g8) {
-        pop_board(h8, r);
-        set_board(f8, r);
-      } else if (target_square == c8) {
-        pop_board(a8, r);
-        set_board(d8, r);
+      switch (target_square) {
+        case g1:
+          pop_board(h1, R);
+          set_board(f1, R);
+          break;
+        case c1:
+          pop_board(a1, R);
+          set_board(d1, R);
+          break;
+        case g8:
+          pop_board(h8, r);
+          set_board(f8, r);
+          break;
+        case c8:
+          pop_board(a8, r);
+          set_board(d8, r);
+          break;
       }
     }
+
     castle &= castling_rights[source_square];
     castle &= castling_rights[target_square];
-    set_board(target_square, piece);
-    side ^= 1;
-    if (is_square_attacked((side == white)
-                               ? get_least_signi_bit_ind(bitboards[k])
-                               : get_least_signi_bit_ind(bitboards[K]),
-                           side))
 
-    {
+    side ^= 1;
+
+    int king_square = (side == white) ? get_least_signi_bit_ind(bitboards[k])
+                                      : get_least_signi_bit_ind(bitboards[K]);
+    if (is_square_attacked(king_square, side)) {
       restore_board();
       return 0;
     } else {
@@ -1049,7 +1061,7 @@ inline int make_move(int move, int move_flag) {
 
   } else {
     if (get_move_capture(move)) {
-      make_move(move, all_moves);
+      return make_move(move, all_moves);
     } else {
       return 0;
     }
@@ -1145,13 +1157,13 @@ void generate_moves(moves& move_list) {
               !get_bit(occupancies[both], target_square)) {
             if (source_square <= h2 && source_square >= a2) {
               move_list.add_move(encode_move(source_square, target_square,
-                                             piece, Q, 0, 0, 0, 0));
+                                             piece, q, 0, 0, 0, 0));
               move_list.add_move(encode_move(source_square, target_square,
-                                             piece, R, 0, 0, 0, 0));
+                                             piece, r, 0, 0, 0, 0));
               move_list.add_move(encode_move(source_square, target_square,
-                                             piece, B, 0, 0, 0, 0));
+                                             piece, b, 0, 0, 0, 0));
               move_list.add_move(encode_move(source_square, target_square,
-                                             piece, N, 0, 0, 0, 0));
+                                             piece, n, 0, 0, 0, 0));
 
             } else {
               if ((source_square >= a7 && source_square <= h7) &&
@@ -1170,13 +1182,13 @@ void generate_moves(moves& move_list) {
                 (enpassant != no_sq && target_square == enpassant)) {
               if (source_square <= h2 && source_square >= a2) {
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, Q, 1, 0, 0, 0));
+                                               piece, q, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, R, 1, 0, 0, 0));
+                                               piece, r, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, B, 1, 0, 0, 0));
+                                               piece, b, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, N, 1, 0, 0, 0));
+                                               piece, n, 1, 0, 0, 0));
               } else {
                 move_list.add_move(
                     encode_move(source_square, target_square, piece, 0, 1, 0,
@@ -1425,7 +1437,7 @@ long long perft(int depth) {
 }
 
 void measurePerft(int depth) {
-  init_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  // init_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   print_board();
   auto start = std::chrono::high_resolution_clock::now();
   long long nodes = perft(depth);
