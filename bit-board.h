@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include <chrono>
 #include <cstring>
 #include <iostream>
 #include <unordered_map>
@@ -366,15 +367,19 @@ void print_board() {
 }
 static inline void set_board(int square, int piece) {
   bitboards[piece] = set_bit(bitboards[piece], square);
-  occupancies[white] = set_bit(occupancies[white], square);
-  occupancies[black] = set_bit(occupancies[black], square);
+  if (piece >= P && piece <= K)
+    occupancies[white] = set_bit(occupancies[white], square);
+  if (piece >= p && piece <= k)
+    occupancies[black] = set_bit(occupancies[black], square);
   occupancies[both] = set_bit(occupancies[both], square);
 }
 
 static inline void pop_board(int square, int piece) {
   bitboards[piece] = pop_bit(bitboards[piece], square);
-  occupancies[white] = pop_bit(occupancies[white], square);
-  occupancies[black] = pop_bit(occupancies[black], square);
+  if (piece >= P && piece <= K)
+    occupancies[white] = pop_bit(occupancies[white], square);
+  if (piece >= p && piece <= k)
+    occupancies[black] = pop_bit(occupancies[black], square);
   occupancies[both] = pop_bit(occupancies[both], square);
 }
 void init_board() {
@@ -887,12 +892,14 @@ void init_from_fen(char* fen) {
 
   for (int piece = P; piece <= K; piece++) {
     occupancies[white] |= bitboards[piece];
-    occupancies[both] |= bitboards[piece];
   }
+  // print_bit_board(occupancies[black]);
+  // print_bit_board(occupancies[white]);
   for (int piece = p; piece <= k; piece++) {
     occupancies[black] |= bitboards[piece];
-    occupancies[both] |= bitboards[piece];
   }
+  // print_bit_board(occupancies[black]);
+  occupancies[both] = occupancies[white] | occupancies[black];
 }
 
 int is_square_attacked(int square, int side) {
@@ -908,6 +915,10 @@ int is_square_attacked(int square, int side) {
   if (get_rook_attacks(square, occupancies[both]) &
       ((side == white ? bitboards[R] : bitboards[r])))
     return 1;
+  if (get_queen_attacks(square, occupancies[both]) &
+      ((side == white ? bitboards[Q] : bitboards[q])))
+    return 1;
+
   return 0;
 }
 
@@ -1023,6 +1034,19 @@ inline int make_move(int move, int move_flag) {
     castle &= castling_rights[source_square];
     castle &= castling_rights[target_square];
     set_board(target_square, piece);
+    side ^= 1;
+    if (is_square_attacked((side == white)
+                               ? get_least_signi_bit_ind(bitboards[k])
+                               : get_least_signi_bit_ind(bitboards[K]),
+                           side))
+
+    {
+      restore_board();
+      return 0;
+    } else {
+      return 1;
+    }
+
   } else {
     if (get_move_capture(move)) {
       make_move(move, all_moves);
@@ -1061,7 +1085,7 @@ void generate_moves(moves& move_list) {
                   !get_bit(occupancies[both], target_square - 8))
 
                 move_list.add_move(encode_move(source_square, target_square - 8,
-                                               piece, 0, 0, 0, 0, 0));
+                                               piece, 0, 0, 1, 0, 0));
               move_list.add_move(encode_move(source_square, target_square,
                                              piece, 0, 0, 0, 0, 0));
             }
@@ -1074,13 +1098,13 @@ void generate_moves(moves& move_list) {
               if (source_square <= h7 && source_square >= a7) {
                 // promotion
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, Q, 0, 0, 0, 0));
+                                               piece, Q, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, R, 0, 0, 0, 0));
+                                               piece, R, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, B, 0, 0, 0, 0));
+                                               piece, B, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, N, 0, 0, 0, 0));
+                                               piece, N, 1, 0, 0, 0));
               } else {
                 move_list.add_move(
                     encode_move(source_square, target_square, piece, 0, 1, 0,
@@ -1134,7 +1158,7 @@ void generate_moves(moves& move_list) {
                   !get_bit(occupancies[both], target_square + 8))
 
                 move_list.add_move(encode_move(source_square, target_square + 8,
-                                               piece, 0, 0, 0, 0, 0));
+                                               piece, 0, 0, 1, 0, 0));
               move_list.add_move(encode_move(source_square, target_square,
                                              piece, 0, 0, 0, 0, 0));
             }
@@ -1146,13 +1170,13 @@ void generate_moves(moves& move_list) {
                 (enpassant != no_sq && target_square == enpassant)) {
               if (source_square <= h2 && source_square >= a2) {
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, Q, 0, 0, 0, 0));
+                                               piece, Q, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, R, 0, 0, 0, 0));
+                                               piece, R, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, B, 0, 0, 0, 0));
+                                               piece, B, 1, 0, 0, 0));
                 move_list.add_move(encode_move(source_square, target_square,
-                                               piece, N, 0, 0, 0, 0));
+                                               piece, N, 1, 0, 0, 0));
               } else {
                 move_list.add_move(
                     encode_move(source_square, target_square, piece, 0, 1, 0,
@@ -1323,4 +1347,97 @@ void generate_moves(moves& move_list) {
       }
     }
   }
+}
+
+void generate_legal_moves(moves& legal_move_list) {
+  // Clear the legal move list
+  legal_move_list.count = 0;
+
+  moves pseudo_legal_moves;
+  pseudo_legal_moves.count = 0;
+  generate_moves(pseudo_legal_moves);
+
+  for (int i = 0; i < pseudo_legal_moves.count; i++) {
+    int move = pseudo_legal_moves.moves[i];
+    copy_board() if (make_move(move, all_moves)) {
+      legal_move_list.add_move(move);
+
+      restore_board()
+    }
+  }
+}
+
+long long count_legal_moves() {
+  long long count = 0;
+  moves move_list;
+  move_list.count = 0;
+  generate_moves(move_list);
+
+  for (int i = 0; i < move_list.count; i++) {
+    U64 bitboards_copy[12], occupancies_copy[3];
+    int side_copy, enpassant_copy, castle_copy;
+    memcpy(bitboards_copy, bitboards, 96);
+    memcpy(occupancies_copy, occupancies, 24);
+    side_copy = side, enpassant_copy = enpassant, castle_copy = castle;
+
+    if (make_move(move_list.moves[i], all_moves)) {
+      count++;
+    }
+
+    memcpy(bitboards, bitboards_copy, 96);
+    memcpy(occupancies, occupancies_copy, 24);
+    side = side_copy, enpassant = enpassant_copy, castle = castle_copy;
+  }
+
+  return count;
+}
+
+long long perft(int depth) {
+  if (depth == 0) return 1;
+  if (depth == 1) return count_legal_moves();
+
+  long long count = 0;
+  moves move_list;
+  move_list.count = 0;
+  generate_moves(move_list);
+
+  int original_side = side;
+  int king_square = (side == white) ? get_least_signi_bit_ind(bitboards[K])
+                                    : get_least_signi_bit_ind(bitboards[k]);
+
+  for (int i = 0; i < move_list.count; i++) {
+    U64 orig_bitboards[12], orig_occupancies[3];
+    int orig_side, orig_enpassant, orig_castle;
+    memcpy(orig_bitboards, bitboards, 96);
+    memcpy(orig_occupancies, occupancies, 24);
+    orig_side = side, orig_enpassant = enpassant, orig_castle = castle;
+
+    if (make_move(move_list.moves[i], all_moves)) {
+      count += perft(depth - 1);
+    }
+
+    memcpy(bitboards, orig_bitboards, 96);
+    memcpy(occupancies, orig_occupancies, 24);
+    side = orig_side, enpassant = orig_enpassant, castle = orig_castle;
+  }
+
+  return count;
+}
+
+void measurePerft(int depth) {
+  init_from_fen("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  print_board();
+  auto start = std::chrono::high_resolution_clock::now();
+  long long nodes = perft(depth);
+  auto end = std::chrono::high_resolution_clock::now();
+
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+  double seconds = duration.count() / 1000.0;
+  long long nps = (seconds > 0) ? static_cast<long long>(nodes / seconds) : 0;
+
+  std::cout << "Perft(" << depth << ") results:" << std::endl;
+  std::cout << "Time: " << duration.count() << " ms" << std::endl;
+  std::cout << "Nodes: " << nodes << std::endl;
+  std::cout << "Nodes per second: " << nps << std::endl;
 }
