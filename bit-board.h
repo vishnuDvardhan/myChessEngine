@@ -56,27 +56,14 @@ inline U64 set_bit(U64 bit_board, int square) {
   return bit_board | (1ULL << square);
 }
 
-inline int count_bits(U64 bit_board) {
-  int count = 0;
-  while (bit_board > 0) {
-    bit_board &= (bit_board - 1);
-    count++;
-  }
-
-  return count;
-}
+inline int count_bits(U64 bit_board) { return __builtin_popcountll(bit_board); }
 
 inline int get_least_signi_bit_ind(U64 bit_board) {
   if (bit_board) {
-    return count_bits((bit_board & -bit_board) - 1);
+    return __builtin_ctzll(bit_board);
   }
   return -1;
 }
-
-// inline U64 pop_bit(U64 bit_board, int square) {
-//   return get_bit(bit_board, square) ? bit_board ^ (1ULL << square) :
-//   bit_board;
-// }
 
 inline U64 pop_bit(U64 bit_board, int square) {
   return bit_board & ~(1ULL << square);
